@@ -1,3 +1,7 @@
+# ================================
+# app/config.py (ACTUALIZADO COMPLETO)
+# ================================
+
 from pydantic_settings import BaseSettings
 from typing import Optional, List
 
@@ -24,11 +28,11 @@ class Settings(BaseSettings):
     # Encryption
     encryption_key: str
     
-    # WAHA Integration
+    # WAHA Integration (YA FUNCIONANDO)
     default_waha_url: str = "http://pampaservers.com:60513/"
     default_waha_api_key: Optional[str] = None
     
-    # N8N Integration
+    # N8N Integration (YA FUNCIONANDO)
     default_n8n_url: str = "https://n8n.pampaservers.com/"
     default_n8n_api_key: Optional[str] = None
     

@@ -1,7 +1,6 @@
-
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from .config import settings
 import logging
+from .config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,20 +18,20 @@ async def connect_to_mongo():
         
         # Verificar conexión
         await mongodb.client.admin.command('ping')
-        logger.info("Conectado exitosamente a MongoDB")
+        logger.info("✅ Conectado exitosamente a MongoDB")
         
         # Crear índices
         await create_indexes()
         
     except Exception as e:
-        logger.error(f"Error conectando a MongoDB: {e}")
+        logger.error(f"❌ Error conectando a MongoDB: {e}")
         raise
 
 async def close_mongo_connection():
     """Cerrar conexión a MongoDB"""
     if mongodb.client:
         mongodb.client.close()
-        logger.info("Conexión MongoDB cerrada")
+        logger.info("🔄 Conexión MongoDB cerrada")
 
 async def create_indexes():
     """Crear índices necesarios"""
@@ -59,10 +58,10 @@ async def create_indexes():
         await mongodb.database.atencion_humana.create_index("whatsapp_numero")
         await mongodb.database.atencion_humana.create_index("conversacion.estado")
         
-        logger.info("Índices creados exitosamente")
+        logger.info("✅ Índices creados exitosamente")
         
     except Exception as e:
-        logger.error(f"Error creando índices: {e}")
+        logger.error(f"❌ Error creando índices: {e}")
 
 def get_database() -> AsyncIOMotorDatabase:
     """Obtener instancia de la base de datos"""

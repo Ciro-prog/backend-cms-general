@@ -1,3 +1,7 @@
+# ================================
+# app/models/business.py (MODELOS COMPLETOS)
+# ================================
+
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -57,18 +61,10 @@ class BusinessTypeCreate(BaseModel):
     componentes_base: List[ComponenteBase] = []
     componentes_opcionales: List[ComponenteOpcional] = []
 
-class BusinessTypeUpdate(BaseModel):
-    """Modelo para actualizar un business type"""
-    nombre: Optional[str] = None
-    descripcion: Optional[str] = None
-    componentes_base: Optional[List[ComponenteBase]] = None
-    componentes_opcionales: Optional[List[ComponenteOpcional]] = None
-
-# Configuraciones para Business Instance
 class BrandingConfig(BaseModel):
     """Configuración de branding"""
     logo_url: Optional[str] = None
-    colores: Dict[str, str] = {
+    colores: Dict[str, Any] = {
         "primary": "#1e40af",
         "secondary": "#059669",
         "background": "#f8fafc",
@@ -117,10 +113,3 @@ class BusinessInstanceCreate(BaseModel):
     nombre: str
     tipo_base: str
     configuracion: Optional[ConfiguracionBusiness] = None
-
-class BusinessInstanceUpdate(BaseModel):
-    """Modelo para actualizar una instancia de business"""
-    nombre: Optional[str] = None
-    configuracion: Optional[ConfiguracionBusiness] = None
-    suscripcion: Optional[Suscripcion] = None
-    activo: Optional[bool] = None

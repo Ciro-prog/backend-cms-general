@@ -3,15 +3,17 @@ import logging
 
 from ..database import get_database
 from ..models.user import User
+from ..core.dynamic_crud import DynamicCrudGenerator
 from ..utils.exceptions import PermissionDeniedError, EntityNotFoundError
 
 logger = logging.getLogger(__name__)
 
 class DynamicCrudService:
-    """Servicio para CRUD dinámico de entidades"""
+    """Servicio que utiliza el generador de CRUD dinámico"""
     
     def __init__(self):
         self.db = get_database()
+        self.crud_generator = DynamicCrudGenerator()
     
     async def get_entity_data(
         self,
@@ -24,23 +26,26 @@ class DynamicCrudService:
     ) -> List[Dict[str, Any]]:
         """Obtener datos de una entidad con paginación y filtros"""
         
-        # Verificar configuración de entidad
-        entity_config = await self.db.entities_config.find_one({
-            "business_id": business_id,
-            "entidad": entidad
-        })
-        
-        if not entity_config:
-            raise EntityNotFoundError(entidad)
-        
-        # TODO: Implementar lógica de obtención de datos desde API externa
-        # Por ahora retornamos datos mock
-        mock_data = [
-            {"id": 1, "nombre": "Cliente 1", "telefono": "+54911123456"},
-            {"id": 2, "nombre": "Cliente 2", "telefono": "+54911654321"}
-        ]
-        
-        return mock_data
+        try:
+            result = await self.crud_generator.list_entities(
+                business_id=business_id,
+                entity_name=entidad,
+                user=user,
+                page=page,
+                per_page=per_page,
+                filters=filters
+            )
+            return result.get("items", [])
+            
+        except EntityNotFoundError:
+            logger.error(f"Entidad no encontrada: {entidad}")
+            raise
+        except PermissionDeniedError:
+            logger.error(f"Permisos insuficientes para {entidad}")
+            raise
+        except Exception as e:
+            logger.error(f"Error obteniendo datos de entidad {entidad}: {e}")
+            raise
     
     async def create_entity_item(
         self,
@@ -51,10 +56,58 @@ class DynamicCrudService:
     ) -> Dict[str, Any]:
         """Crear nuevo item en entidad"""
         
-        # Verificar permisos
-        # TODO: Implementar verificación de permisos granular
+        try:
+            return await self.crud_generator.create_entity(
+                business_id=business_id,
+                entity_name=entidad,
+                data=item_data,
+                user=user
+            )
+            
+        except Exception as e:
+            logger.error(f"Error creando item en {entidad}: {e}")
+            raise
+    
+    async def update_entity_item(
+        self,
+        business_id: str,
+        entidad: str,
+        item_id: str,
+        item_data: Dict[str, Any],
+        user: User
+    ) -> Dict[str, Any]:
+        """Actualizar item en entidad"""
         
-        # TODO: Implementar creación via API externa
-        logger.info(f"Creando item en {business_id}.{entidad}: {item_data}")
+        try:
+            return await self.crud_generator.update_entity(
+                business_id=business_id,
+                entity_name=entidad,
+                entity_id=item_id,
+                data=item_data,
+                user=user
+            )
+            
+        except Exception as e:
+            logger.error(f"Error actualizando item {item_id} en {entidad}: {e}")
+            raise
+    
+    async def delete_entity_item(
+        self,
+        business_id: str,
+        entidad: str,
+        item_id: str,
+        user: User
+    ) -> bool:
+        """Eliminar item de entidad"""
         
-        return {"id": 123, **item_data, "created_at": "2025-01-19T10:30:00Z"}
+        try:
+            return await self.crud_generator.delete_entity(
+                business_id=business_id,
+                entity_name=entidad,
+                entity_id=item_id,
+                user=user
+            )
+            
+        except Exception as e:
+            logger.error(f"Error eliminando item {item_id} de {entidad}: {e}")
+            raise

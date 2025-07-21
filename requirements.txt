@@ -1,16 +1,27 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+# ================================
+# requirements.txt (VERSIONES QUE YA TIENES INSTALADAS)
+# ================================
+
+# Core FastAPI - ✅ YA INSTALADO
+fastapi==0.108.0
+uvicorn==0.25.0
+
+# Database - ✅ YA INSTALADO
 motor==3.3.2
-pydantic==2.5.0
-pydantic-settings==2.1.0
-python-multipart==0.0.6
+
+# Validation & Config - ✅ YA INSTALADO (pydantic 2.11.7 es mejor que 2.5.2)
+pydantic>=2.11.7
+python-dotenv==1.0.0
+
+# Authentication & Security - ✅ YA INSTALADO
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-clerk-backend-api==0.1.0
-redis==5.0.1
-celery==5.3.4
-httpx==0.25.2
-python-dotenv==1.0.0
-cryptography==41.0.8
-aiofiles==23.2.1
-Pillow==10.1.0
+cryptography==42.0.0
+
+# HTTP Client - ✅ YA INSTALADO
+httpx==0.26.0
+
+# DEPENDENCIAS RESTANTES - Instalar estas:
+pydantic-settings>=2.1.0
+redis>=5.0.1
+aiofiles>=23.2.1

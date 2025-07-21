@@ -1,18 +1,18 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
-import os
+from typing import Optional, List
 
 class Settings(BaseSettings):
     # MongoDB
-    mongodb_url: str = "mongodb://localhost:27017/cms_dinamico"
-    mongodb_db_name: str = "cms_dinamico"
+    mongodb_url: str = "mongodb://localhost:27017/cms"
+    mongodb_db_name: str = "cms"
     
-    # Redis
-    redis_url: str = "redis://localhost:6379"
+    # Redis Cloud
+    redis_url: str = "https://api.redislabs.com/v1"
+    redis_api_key: Optional[str] = None
     
     # Clerk
     clerk_secret_key: str
-    clerk_publishable_key: str
+    next_public_clerk_publishable_key: str
     
     # FastAPI
     api_base_url: str = "http://localhost:8000"
@@ -24,9 +24,13 @@ class Settings(BaseSettings):
     # Encryption
     encryption_key: str
     
-    # Integrations
-    default_waha_url: str = "http://localhost:3000"
-    default_n8n_url: str = "http://localhost:5678"
+    # WAHA Integration
+    default_waha_url: str = "http://pampaservers.com:60513/"
+    default_waha_api_key: Optional[str] = None
+    
+    # N8N Integration
+    default_n8n_url: str = "https://n8n.pampaservers.com/"
+    default_n8n_api_key: Optional[str] = None
     
     # Cache
     cache_ttl_seconds: int = 300
@@ -41,7 +45,7 @@ class Settings(BaseSettings):
     log_format: str = "json"
     
     # CORS
-    allowed_origins: list = ["http://localhost:3000"]
+    allowed_origins: List[str] = ["http://localhost:3000", "https://*.vercel.app"]
     
     class Config:
         env_file = ".env"

@@ -1,6 +1,10 @@
-// CMS Dinámico - JavaScript principal
+/* ===================================
+   app/frontend/static/js/main.js
+   =================================== */
+
+// CMS DinÃ¡mico - JavaScript principal
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('CMS Dinámico frontend cargado');
+    console.log('CMS DinÃ¡mico frontend cargado');
     
     // Auto-hide flash messages after 5 seconds
     setTimeout(function() {
@@ -10,4 +14,16 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => msg.remove(), 500);
         });
     }, 5000);
+    
+    // Mejorar experiencia de formularios
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function() {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = 'Procesando...';
+            }
+        });
+    });
 });

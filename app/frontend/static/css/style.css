@@ -1,4 +1,8 @@
-/* CMS Din·mico - Estilos personalizados */
+/* ===================================
+   app/frontend/static/css/style.css
+   =================================== */
+
+/* CMS Din√°mico - Estilos personalizados */
 .cms-logo {
     max-width: 200px;
 }
@@ -15,4 +19,14 @@
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+/* Mejoras de accesibilidad */
+.focus\:ring-blue-500:focus {
+    --tw-ring-color: #3b82f6;
+}
+
+/* Animaciones suaves */
+.transition-all {
+    transition: all 0.3s ease;
 }

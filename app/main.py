@@ -769,3 +769,535 @@ logger.info("🎉 CMS Dinámico iniciado completamente!")
 logger.info("📍 Frontend: http://localhost:8000")
 logger.info("📍 API Docs: http://localhost:8000/docs")
 logger.info("👤 Login: superadmin / superadmin")
+# ===================================================================
+# AGREGAR AL FINAL DE app/main.py - Configurador de Entidades
+# ===================================================================
+
+from fastapi.responses import HTMLResponse
+import os
+
+# ================================
+# FRONTEND DEL CONFIGURADOR DE ENTIDADES
+# ================================
+
+@app.get("/configurador", response_class=HTMLResponse)
+async def configurador_entidades():
+    """Interfaz del configurador de entidades"""
+    
+    # Aquí iría el HTML del configurador completo
+    # Por ahora devolvemos un placeholder que carga el configurador
+    
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>⚙️ Configurador de Entidades - CMS Dinámico</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.js"></script>
+    </head>
+    <body>
+        <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div class="text-center">
+                <div class="text-6xl mb-4">⚙️</div>
+                <h1 class="text-2xl font-bold mb-2">Configurador de Entidades</h1>
+                <p class="text-gray-600 mb-4">Cargando interfaz...</p>
+                <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+            </div>
+        </div>
+        
+        <script>
+            // Cargar el configurador completo
+            window.location.href = '/configurador/app';
+        </script>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(content=html_content)
+
+@app.get("/configurador/app", response_class=HTMLResponse)
+async def configurador_app():
+    """Aplicación completa del configurador"""
+    
+    # El HTML completo del configurador que creamos
+    html_content = '''<!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>⚙️ Configurador de Entidades - CMS Dinámico</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.js"></script>
+        <style>
+            .drag-handle { cursor: grab; }
+            .drag-handle:active { cursor: grabbing; }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-xl font-semibold text-gray-900">⚙️ Configurador de Entidades</h1>
+                        <div class="text-sm text-gray-500">
+                            Business: <span id="businessName" class="font-medium">Cargando...</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="saveAllConfigs()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            💾 Guardar Todo
+                        </button>
+                        <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900">
+                            ← Volver al CMS
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Panel Izquierdo - Selección de Business y Entidad -->
+                <div class="lg:col-span-1 space-y-6">
+                    
+                    <!-- Selector de Business -->
+                    <div class="bg-white rounded-xl shadow-sm border p-6">
+                        <h2 class="text-lg font-semibold mb-4">🏢 Seleccionar Business</h2>
+                        <select id="businessSelect" onchange="loadBusiness()" class="w-full p-3 border rounded-lg">
+                            <option value="">Selecciona un business...</option>
+                        </select>
+                    </div>
+
+                    <!-- Lista de Entidades -->
+                    <div class="bg-white rounded-xl shadow-sm border p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold">📊 Entidades</h2>
+                            <button onclick="createNewEntity()" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                                ➕ Nueva
+                            </button>
+                        </div>
+                        <div id="entitiesList" class="space-y-2">
+                            <div class="text-gray-500 text-center py-4">
+                                Selecciona un business primero
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- APIs Disponibles -->
+                    <div class="bg-white rounded-xl shadow-sm border p-6">
+                        <h2 class="text-lg font-semibold mb-4">🔌 APIs Disponibles</h2>
+                        <div id="apisList" class="space-y-2">
+                            <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                <div class="font-medium text-blue-900">ISPCube API</div>
+                                <div class="text-sm text-blue-700">Clientes, planes, facturación</div>
+                            </div>
+                            <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+                                <div class="font-medium text-green-900">WAHA WhatsApp</div>
+                                <div class="text-sm text-green-700">Mensajes y sesiones</div>
+                            </div>
+                            <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                <div class="font-medium text-purple-900">N8N Workflows</div>
+                                <div class="text-sm text-purple-700">Automatizaciones</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel Central - Configuración de Entidad -->
+                <div class="lg:col-span-2">
+                    <div id="entityConfigPanel" class="bg-white rounded-xl shadow-sm border p-6 min-h-96">
+                        <div class="text-center text-gray-500 py-12">
+                            <div class="text-6xl mb-4">⚙️</div>
+                            <h3 class="text-lg font-medium mb-2">Configurador de Entidades</h3>
+                            <p>Selecciona una entidad de la lista para configurar sus campos, API y permisos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Nueva Entidad -->
+        <div id="newEntityModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+                <h3 class="text-lg font-semibold mb-4">📊 Nueva Entidad</h3>
+                <form onsubmit="saveNewEntity(event)">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre de la Entidad</label>
+                            <input type="text" id="newEntityName" class="w-full p-3 border rounded-lg" placeholder="ej: clientes, productos, facturas" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                            <textarea id="newEntityDescription" class="w-full p-3 border rounded-lg" rows="3" placeholder="Descripción de la entidad..."></textarea>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button type="button" onclick="closeNewEntityModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                                Crear Entidad
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            // Estado global
+            let currentBusiness = null;
+            let currentEntity = null;
+            let businessList = [];
+            let entityConfigs = {};
+
+            // URLs de la API - usar la misma base que el servidor actual
+            const API_BASE = window.location.origin + '/api';
+
+            // Inicialización
+            document.addEventListener('DOMContentLoaded', async () => {
+                await loadBusinessList();
+            });
+
+            // [RESTO DEL CÓDIGO JAVASCRIPT IGUAL QUE ANTES]
+            // ================================
+// GESTIÓN DE BUSINESSES
+// ================================
+
+// Cargar lista de businesses
+async function loadBusinessList() {
+    try {
+        console.log('Cargando businesses desde:', API_BASE + '/admin/businesses');
+        const response = await fetch(`${API_BASE}/admin/businesses`);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Businesses data:', data);
+        
+        // Manejar respuesta que puede tener formato {success: true, data: [...]}
+        businessList = data.data || data;
+        
+        const select = document.getElementById('businessSelect');
+        
+        select.innerHTML = '<option value="">Selecciona un business...</option>';
+        businessList.forEach(business => {
+            const option = document.createElement('option');
+            option.value = business.business_id;
+            option.textContent = `${business.nombre} (${business.business_id})`;
+            select.appendChild(option);
+        });
+        
+        console.log(`Cargados ${businessList.length} businesses`);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error cargando businesses: ' + error.message, 'error');
+    }
+}
+
+// Cargar business seleccionado
+async function loadBusiness() {
+    const businessId = document.getElementById('businessSelect').value;
+    if (!businessId) {
+        document.getElementById('entitiesList').innerHTML = '<div class="text-gray-500 text-center py-4">Selecciona un business primero</div>';
+        return;
+    }
+
+    currentBusiness = businessList.find(b => b.business_id === businessId);
+    document.getElementById('businessName').textContent = currentBusiness?.nombre || businessId;
+
+    await loadEntities(businessId);
+}
+
+// ================================
+// GESTIÓN DE ENTIDADES
+// ================================
+
+// Cargar entidades del business
+async function loadEntities(businessId) {
+    try {
+        console.log('Cargando entidades para business:', businessId);
+        const response = await fetch(`${API_BASE}/admin/entities/${businessId}`);
+        console.log('Entities response status:', response.status);
+        
+        const entities = response.ok ? await response.json() : [];
+        console.log('Entities data:', entities);
+        
+        const container = document.getElementById('entitiesList');
+        
+        if (entities.length === 0) {
+            container.innerHTML = `
+                <div class="text-gray-500 text-center py-4">
+                    <div class="text-2xl mb-2">📊</div>
+                    <div>No hay entidades configuradas</div>
+                    <button onclick="createNewEntity()" class="text-blue-600 hover:text-blue-800 mt-2">
+                        Crear la primera entidad
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = entities.map(entity => `
+            <div class="entity-item p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+                 onclick="selectEntity('${entity.entidad}')">
+                <div class="font-medium">${entity.entidad}</div>
+                <div class="text-sm text-gray-600">${entity.configuracion?.descripcion || 'Sin descripción'}</div>
+                <div class="text-xs text-gray-500 mt-1">
+                    ${entity.configuracion?.campos?.length || 0} campos configurados
+                </div>
+            </div>
+        `).join('');
+
+        // Cargar configuraciones en memoria
+        entities.forEach(entity => {
+            entityConfigs[entity.entidad] = entity;
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error cargando entidades: ' + error.message, 'error');
+    }
+}
+
+// ================================
+// MODAL PARA NUEVA ENTIDAD
+// ================================
+
+function createNewEntity() {
+    if (!currentBusiness) {
+        showNotification('Selecciona un business primero', 'warning');
+        return;
+    }
+    document.getElementById('newEntityModal').classList.remove('hidden');
+    document.getElementById('newEntityModal').classList.add('flex');
+}
+
+function closeNewEntityModal() {
+    document.getElementById('newEntityModal').classList.add('hidden');
+    document.getElementById('newEntityModal').classList.remove('flex');
+    document.getElementById('newEntityName').value = '';
+    document.getElementById('newEntityDescription').value = '';
+}
+
+async function saveNewEntity(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('newEntityName').value.trim();
+    const description = document.getElementById('newEntityDescription').value.trim();
+    
+    if (!name || !currentBusiness) return;
+
+    try {
+        const newEntity = {
+            business_id: currentBusiness.business_id,
+            entidad: name,
+            configuracion: {
+                descripcion: description,
+                campos: [],
+                api_config: null,
+                crud_config: {
+                    crear: { habilitado: true, roles: ['admin'] },
+                    editar: { habilitado: true, roles: ['admin'] },
+                    eliminar: { habilitado: false, roles: ['admin'] }
+                }
+            }
+        };
+
+        console.log('Creando entidad:', newEntity);
+
+        const response = await fetch(`${API_BASE}/admin/entities/${currentBusiness.business_id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newEntity)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Error creando entidad');
+        }
+
+        closeNewEntityModal();
+        await loadEntities(currentBusiness.business_id);
+        showNotification('Entidad creada exitosamente', 'success');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error creando entidad: ' + error.message, 'error');
+    }
+}
+
+// ================================
+// FUNCIONES AUXILIARES
+// ================================
+
+async function saveAllConfigs() {
+    showNotification('Funcionalidad en desarrollo', 'info');
+}
+
+function showNotification(message, type = 'info') {
+    const colors = {
+        success: 'bg-green-100 border-green-300 text-green-800',
+        error: 'bg-red-100 border-red-300 text-red-800',
+        warning: 'bg-yellow-100 border-yellow-300 text-yellow-800',
+        info: 'bg-blue-100 border-blue-300 text-blue-800'
+    };
+
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 p-4 rounded-lg border ${colors[type]} z-50 max-w-sm`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.remove();
+    }, 4000);
+}
+
+console.log('Configurador de Entidades cargado correctamente');
+
+            // ... (todo el código JavaScript del configurador)
+        </script>
+    </body>
+    </html>'''
+    
+    return HTMLResponse(content=html_content)
+
+# ================================
+# ENDPOINT PARA GESTIÓN DE ENTIDADES DEL CONFIGURADOR
+# ================================
+
+from pydantic import BaseModel
+from typing import Dict, Any, List, Optional
+
+class EntityConfigRequest(BaseModel):
+    """Request para configuración de entidad"""
+    business_id: str
+    entidad: str
+    configuracion: Dict[str, Any]
+
+class CampoConfigRequest(BaseModel):
+    """Request para configuración de campo"""
+    campo: str
+    tipo: str
+    obligatorio: bool = False
+    visible_roles: List[str] = ["*"]
+    editable_roles: List[str] = ["admin"]
+    validacion: Optional[str] = None
+    placeholder: Optional[str] = None
+    descripcion: Optional[str] = None
+
+@app.get("/api/admin/entities/{business_id}")
+async def get_entities_config(business_id: str):
+    """Obtener configuraciones de entidades para un business"""
+    try:
+        db = get_database()
+        entities = await db.entities_config.find(
+            {"business_id": business_id}
+        ).to_list(None)
+        
+        # Convertir ObjectId a string
+        for entity in entities:
+            if "_id" in entity:
+                entity["_id"] = str(entity["_id"])
+        
+        return entities
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo entidades: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/entities/{business_id}")
+async def create_entity_config(business_id: str, entity_config: EntityConfigRequest):
+    """Crear nueva configuración de entidad"""
+    try:
+        db = get_database()
+        
+        # Verificar si ya existe
+        existing = await db.entities_config.find_one({
+            "business_id": business_id,
+            "entidad": entity_config.entidad
+        })
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="La entidad ya existe")
+        
+        # Crear nueva configuración
+        entity_data = {
+            "business_id": business_id,
+            "entidad": entity_config.entidad,
+            "configuracion": entity_config.configuracion,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        result = await db.entities_config.insert_one(entity_data)
+        entity_data["_id"] = str(result.inserted_id)
+        
+        logger.info(f"Entidad creada: {entity_config.entidad} para business {business_id}")
+        return entity_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creando entidad: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/admin/entities/{business_id}/{entidad}")
+async def update_entity_config(business_id: str, entidad: str, entity_config: EntityConfigRequest):
+    """Actualizar configuración de entidad"""
+    try:
+        db = get_database()
+        
+        update_data = {
+            "configuracion": entity_config.configuracion,
+            "updated_at": datetime.utcnow()
+        }
+        
+        result = await db.entities_config.update_one(
+            {"business_id": business_id, "entidad": entidad},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Entidad no encontrada")
+        
+        logger.info(f"Entidad actualizada: {entidad} para business {business_id}")
+        return {"message": "Entidad actualizada exitosamente"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error actualizando entidad: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/entities/{business_id}/{entidad}")
+async def delete_entity_config(business_id: str, entidad: str):
+    """Eliminar configuración de entidad"""
+    try:
+        db = get_database()
+        
+        result = await db.entities_config.delete_one({
+            "business_id": business_id,
+            "entidad": entidad
+        })
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Entidad no encontrada")
+        
+        logger.info(f"Entidad eliminada: {entidad} para business {business_id}")
+        return {"message": "Entidad eliminada exitosamente"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error eliminando entidad: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Configurador de Entidades - CMS Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.js"></script>
+    <style>
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-semibold text-gray-900">⚙️ Configurador de Entidades</h1>
+                    <div class="text-sm text-gray-500">
+                        Business: <span id="businessName" class="font-medium">Cargando...</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="saveAllConfigs()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        💾 Guardar Todo
+                    </button>
+                    <button onclick="window.location.href='/'" class="text-gray-600 hover:text-gray-900">
+                        ← Volver al CMS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Panel Izquierdo - Selección de Business y Entidad -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Selector de Business -->
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h2 class="text-lg font-semibold mb-4">🏢 Seleccionar Business</h2>
+                    <select id="businessSelect" onchange="loadBusiness()" class="w-full p-3 border rounded-lg">
+                        <option value="">Selecciona un business...</option>
+                    </select>
+                </div>
+
+                <!-- Lista de Entidades -->
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">📊 Entidades</h2>
+                        <button onclick="createNewEntity()" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                            ➕ Nueva
+                        </button>
+                    </div>
+                    <div id="entitiesList" class="space-y-2">
+                        <div class="text-gray-500 text-center py-4">
+                            Selecciona un business primero
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APIs Disponibles -->
+                <div class="bg-white rounded-xl shadow-sm border p-6">
+                    <h2 class="text-lg font-semibold mb-4">🔌 APIs Disponibles</h2>
+                    <div id="apisList" class="space-y-2">
+                        <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div class="font-medium text-blue-900">ISPCube API</div>
+                            <div class="text-sm text-blue-700">Clientes, planes, facturación</div>
+                        </div>
+                        <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+                            <div class="font-medium text-green-900">WAHA WhatsApp</div>
+                            <div class="text-sm text-green-700">Mensajes y sesiones</div>
+                        </div>
+                        <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                            <div class="font-medium text-purple-900">N8N Workflows</div>
+                            <div class="text-sm text-purple-700">Automatizaciones</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Central - Configuración de Entidad -->
+            <div class="lg:col-span-2">
+                <div id="entityConfigPanel" class="bg-white rounded-xl shadow-sm border p-6 min-h-96">
+                    <div class="text-center text-gray-500 py-12">
+                        <div class="text-6xl mb-4">⚙️</div>
+                        <h3 class="text-lg font-medium mb-2">Configurador de Entidades</h3>
+                        <p>Selecciona una entidad de la lista para configurar sus campos, API y permisos</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Nueva Entidad -->
+    <div id="newEntityModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold mb-4">📊 Nueva Entidad</h3>
+            <form onsubmit="saveNewEntity(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre de la Entidad</label>
+                        <input type="text" id="newEntityName" class="w-full p-3 border rounded-lg" placeholder="ej: clientes, productos, facturas" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                        <textarea id="newEntityDescription" class="w-full p-3 border rounded-lg" rows="3" placeholder="Descripción de la entidad..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeNewEntityModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            Crear Entidad
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Estado global
+        let currentBusiness = null;
+        let currentEntity = null;
+        let businessList = [];
+        let entityConfigs = {};
+
+        // URLs de la API
+        const API_BASE = 'http://localhost:8000/api';
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadBusinessList();
+        });
+
+        // Cargar lista de businesses
+        async function loadBusinessList() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/businesses`);
+                if (!response.ok) throw new Error('Error cargando businesses');
+                
+                businessList = await response.json();
+                const select = document.getElementById('businessSelect');
+                
+                select.innerHTML = '<option value="">Selecciona un business...</option>';
+                businessList.forEach(business => {
+                    const option = document.createElement('option');
+                    option.value = business.business_id;
+                    option.textContent = `${business.nombre} (${business.business_id})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error cargando businesses', 'error');
+            }
+        }
+
+        // Cargar business seleccionado
+        async function loadBusiness() {
+            const businessId = document.getElementById('businessSelect').value;
+            if (!businessId) {
+                document.getElementById('entitiesList').innerHTML = '<div class="text-gray-500 text-center py-4">Selecciona un business primero</div>';
+                return;
+            }
+
+            currentBusiness = businessList.find(b => b.business_id === businessId);
+            document.getElementById('businessName').textContent = currentBusiness?.nombre || businessId;
+
+            await loadEntities(businessId);
+        }
+
+        // Cargar entidades del business
+        async function loadEntities(businessId) {
+            try {
+                const response = await fetch(`${API_BASE}/admin/entities/${businessId}`);
+                const entities = response.ok ? await response.json() : [];
+                
+                const container = document.getElementById('entitiesList');
+                
+                if (entities.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-gray-500 text-center py-4">
+                            <div class="text-2xl mb-2">📊</div>
+                            <div>No hay entidades configuradas</div>
+                            <button onclick="createNewEntity()" class="text-blue-600 hover:text-blue-800 mt-2">
+                                Crear la primera entidad
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = entities.map(entity => `
+                    <div class="entity-item p-3 border rounded-lg cursor-pointer hover:bg-gray-50 ${currentEntity?.entidad === entity.entidad ? 'bg-blue-50 border-blue-300' : ''}"
+                         onclick="selectEntity('${entity.entidad}')">
+                        <div class="font-medium">${entity.entidad}</div>
+                        <div class="text-sm text-gray-600">${entity.configuracion?.descripcion || 'Sin descripción'}</div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            ${entity.configuracion?.campos?.length || 0} campos configurados
+                        </div>
+                    </div>
+                `).join('');
+
+                // Cargar configuraciones en memoria
+                entities.forEach(entity => {
+                    entityConfigs[entity.entidad] = entity;
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error cargando entidades', 'error');
+            }
+        }
+
+        // Seleccionar entidad para configurar
+        async function selectEntity(entityName) {
+            currentEntity = entityConfigs[entityName];
+            
+            // Actualizar UI de selección
+            document.querySelectorAll('.entity-item').forEach(item => {
+                item.classList.remove('bg-blue-50', 'border-blue-300');
+            });
+            event.target.closest('.entity-item').classList.add('bg-blue-50', 'border-blue-300');
+            
+            await renderEntityConfig();
+        }
+
+        // Renderizar configuración de entidad
+        async function renderEntityConfig() {
+            if (!currentEntity) return;
+
+            const panel = document.getElementById('entityConfigPanel');
+            const config = currentEntity.configuracion || {};
+            const campos = config.campos || [];
+
+            panel.innerHTML = `
+                <div class="space-y-6">
+                    <!-- Header de la Entidad -->
+                    <div class="border-b pb-4">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-900">📊 ${currentEntity.entidad}</h2>
+                                <p class="text-gray-600">${config.descripcion || 'Sin descripción'}</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="testEntityAPI()" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                                    🧪 Test API
+                                </button>
+                                <button onclick="deleteEntity()" class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+                                    🗑️ Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="border-b">
+                        <nav class="flex space-x-8">
+                            <button onclick="showTab('campos')" class="tab-btn py-2 px-1 border-b-2 border-blue-500 text-blue-600 font-medium">
+                                📝 Campos
+                            </button>
+                            <button onclick="showTab('api')" class="tab-btn py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                🔌 API Externa
+                            </button>
+                            <button onclick="showTab('permisos')" class="tab-btn py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                🔒 Permisos
+                            </button>
+                            <button onclick="showTab('crud')" class="tab-btn py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                ⚡ CRUD
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div id="tabContent">
+                        ${renderCamposTab(campos)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Renderizar tab de campos
+        function renderCamposTab(campos) {
+            return `
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-medium">Configuración de Campos</h3>
+                        <button onclick="addNewField()" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                            ➕ Nuevo Campo
+                        </button>
+                    </div>
+                    
+                    <div id="fieldsContainer" class="space-y-3">
+                        ${campos.map((campo, index) => renderFieldConfig(campo, index)).join('')}
+                        ${campos.length === 0 ? '<div class="text-center text-gray-500 py-8">No hay campos configurados</div>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Renderizar configuración de campo individual
+        function renderFieldConfig(campo, index) {
+            const tipos = ['text', 'number', 'select', 'date', 'boolean', 'phone', 'email', 'textarea'];
+            const roles = ['admin', 'tecnico', 'user', 'viewer'];
+
+            return `
+                <div class="field-config border rounded-lg p-4 bg-gray-50">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Información básica -->
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Campo</label>
+                                <input type="text" value="${campo.campo}" onchange="updateField(${index}, 'campo', this.value)" 
+                                       class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                                <select onchange="updateField(${index}, 'tipo', this.value)" class="w-full p-2 border rounded">
+                                    ${tipos.map(tipo => `<option value="${tipo}" ${campo.tipo === tipo ? 'selected' : ''}>${tipo}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" ${campo.obligatorio ? 'checked' : ''} 
+                                       onchange="updateField(${index}, 'obligatorio', this.checked)" id="req_${index}">
+                                <label for="req_${index}" class="text-sm text-gray-700">Obligatorio</label>
+                            </div>
+                        </div>
+
+                        <!-- Permisos -->
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Visible para roles</label>
+                                <div class="space-y-1">
+                                    ${roles.map(rol => `
+                                        <label class="flex items-center space-x-2">
+                                            <input type="checkbox" ${(campo.visible_roles || ['*']).includes(rol) || (campo.visible_roles || ['*']).includes('*') ? 'checked' : ''}
+                                                   onchange="updateFieldRoles(${index}, 'visible_roles', '${rol}', this.checked)">
+                                            <span class="text-sm">${rol}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Validación y opciones -->
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Validación</label>
+                                <input type="text" value="${campo.validacion || ''}" 
+                                       onchange="updateField(${index}, 'validacion', this.value)"
+                                       placeholder="ej: min:10, max:100, email"
+                                       class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Placeholder</label>
+                                <input type="text" value="${campo.placeholder || ''}" 
+                                       onchange="updateField(${index}, 'placeholder', this.value)"
+                                       class="w-full p-2 border rounded">
+                            </div>
+                            <button onclick="removeField(${index})" class="text-red-600 hover:text-red-800 text-sm">
+                                🗑️ Eliminar Campo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Funciones de gestión de campos
+        function addNewField() {
+            if (!currentEntity.configuracion) currentEntity.configuracion = {};
+            if (!currentEntity.configuracion.campos) currentEntity.configuracion.campos = [];
+            
+            const newField = {
+                campo: `nuevo_campo_${Date.now()}`,
+                tipo: 'text',
+                obligatorio: false,
+                visible_roles: ['*'],
+                editable_roles: ['admin']
+            };
+            
+            currentEntity.configuracion.campos.push(newField);
+            renderEntityConfig();
+        }
+
+        function updateField(index, property, value) {
+            if (!currentEntity.configuracion.campos[index]) return;
+            currentEntity.configuracion.campos[index][property] = value;
+        }
+
+        function updateFieldRoles(index, roleType, role, checked) {
+            if (!currentEntity.configuracion.campos[index]) return;
+            
+            let roles = currentEntity.configuracion.campos[index][roleType] || [];
+            if (checked) {
+                if (!roles.includes(role)) roles.push(role);
+            } else {
+                roles = roles.filter(r => r !== role);
+            }
+            currentEntity.configuracion.campos[index][roleType] = roles;
+        }
+
+        function removeField(index) {
+            if (confirm('¿Estás seguro de eliminar este campo?')) {
+                currentEntity.configuracion.campos.splice(index, 1);
+                renderEntityConfig();
+            }
+        }
+
+        // Gestión de tabs
+        function showTab(tabName) {
+            // Actualizar botones de tab
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-600', 'font-medium');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            event.target.classList.remove('border-transparent', 'text-gray-500');
+            event.target.classList.add('border-blue-500', 'text-blue-600', 'font-medium');
+
+            // Renderizar contenido del tab
+            const content = document.getElementById('tabContent');
+            switch(tabName) {
+                case 'campos':
+                    content.innerHTML = renderCamposTab(currentEntity.configuracion?.campos || []);
+                    break;
+                case 'api':
+                    content.innerHTML = renderAPITab();
+                    break;
+                case 'permisos':
+                    content.innerHTML = renderPermisosTab();
+                    break;
+                case 'crud':
+                    content.innerHTML = renderCRUDTab();
+                    break;
+            }
+        }
+
+        // Modal para nueva entidad
+        function createNewEntity() {
+            if (!currentBusiness) {
+                showNotification('Selecciona un business primero', 'warning');
+                return;
+            }
+            document.getElementById('newEntityModal').classList.remove('hidden');
+            document.getElementById('newEntityModal').classList.add('flex');
+        }
+
+        function closeNewEntityModal() {
+            document.getElementById('newEntityModal').classList.add('hidden');
+            document.getElementById('newEntityModal').classList.remove('flex');
+            document.getElementById('newEntityName').value = '';
+            document.getElementById('newEntityDescription').value = '';
+        }
+
+        async function saveNewEntity(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('newEntityName').value.trim();
+            const description = document.getElementById('newEntityDescription').value.trim();
+            
+            if (!name || !currentBusiness) return;
+
+            try {
+                const newEntity = {
+                    business_id: currentBusiness.business_id,
+                    entidad: name,
+                    configuracion: {
+                        descripcion: description,
+                        campos: [],
+                        api_config: null,
+                        crud_config: {
+                            crear: { habilitado: true, roles: ['admin'] },
+                            editar: { habilitado: true, roles: ['admin'] },
+                            eliminar: { habilitado: false, roles: ['admin'] }
+                        }
+                    }
+                };
+
+                const response = await fetch(`${API_BASE}/admin/entities/${currentBusiness.business_id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newEntity)
+                });
+
+                if (!response.ok) throw new Error('Error creando entidad');
+
+                closeNewEntityModal();
+                await loadEntities(currentBusiness.business_id);
+                showNotification('Entidad creada exitosamente', 'success');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error creando entidad', 'error');
+            }
+        }
+
+        // Funciones auxiliares
+        function renderAPITab() {
+            return `
+                <div class="space-y-4">
+                    <h3 class="text-lg font-medium">Configuración de API Externa</h3>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p class="text-yellow-800">🚧 Funcionalidad en desarrollo</p>
+                        <p class="text-yellow-700 text-sm">Esta sección permitirá configurar el mapeo con APIs externas como ISPCube.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPermisosTab() {
+            return `
+                <div class="space-y-4">
+                    <h3 class="text-lg font-medium">Configuración de Permisos</h3>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p class="text-yellow-800">🚧 Funcionalidad en desarrollo</p>
+                        <p class="text-yellow-700 text-sm">Esta sección permitirá configurar permisos granulares por rol.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCRUDTab() {
+            return `
+                <div class="space-y-4">
+                    <h3 class="text-lg font-medium">Configuración de Operaciones CRUD</h3>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p class="text-yellow-800">🚧 Funcionalidad en desarrollo</p>
+                        <p class="text-yellow-700 text-sm">Esta sección permitirá configurar qué operaciones están habilitadas para cada rol.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function saveAllConfigs() {
+            if (!currentEntity || !currentBusiness) {
+                showNotification('No hay configuración para guardar', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/entities/${currentBusiness.business_id}/${currentEntity.entidad}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentEntity)
+                });
+
+                if (!response.ok) throw new Error('Error guardando configuración');
+
+                showNotification('Configuración guardada exitosamente', 'success');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error guardando configuración', 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-100 border-green-300 text-green-800',
+                error: 'bg-red-100 border-red-300 text-red-800',
+                warning: 'bg-yellow-100 border-yellow-300 text-yellow-800',
+                info: 'bg-blue-100 border-blue-300 text-blue-800'
+            };
+
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg border ${colors[type]} z-50`;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

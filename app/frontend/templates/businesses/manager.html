@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Instances - CMS Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">🏢 Business Instances</h1>
+                    <p class="mt-1 text-sm text-gray-500">Admin & Super Admin - Gestiona empresas que usan los templates</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="/dashboard" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                        🏠 Dashboard
+                    </a>
+                    <a href="/business-types" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        ⚙️ Business Types
+                    </a>
+                    <form method="post" action="/logout" style="display: inline;">
+                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                            🚪 Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-data="businessInstancesManager()" x-cloak class="min-h-screen">
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Filtros y Stats -->
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="px-6 py-4">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <!-- Filtros -->
+                        <div class="flex space-x-4">
+                            <select x-model="filtroTipo" @change="applyFilters()" 
+                                    class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                                <option value="">Todos los tipos</option>
+                                <template x-for="tipo in businessTypes">
+                                    <option :value="tipo.tipo" x-text="tipo.nombre"></option>
+                                </template>
+                            </select>
+                            
+                            <select x-model="filtroEstado" @change="applyFilters()" 
+                                    class="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                                <option value="">Todos los estados</option>
+                                <option value="activo">✅ Activos</option>
+                                <option value="inactivo">❌ Inactivos</option>
+                            </select>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="flex space-x-6 text-sm">
+                            <div class="text-center">
+                                <span class="block text-2xl font-bold text-green-600" x-text="stats.activos"></span>
+                                <span class="text-gray-500">Activos</span>
+                            </div>
+                            <div class="text-center">
+                                <span class="block text-2xl font-bold text-gray-600" x-text="stats.total"></span>
+                                <span class="text-gray-500">Total</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Business Instances List -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">📋 Empresas Registradas</h2>
+                </div>
+                
+                <div class="p-6">
+                    <template x-if="filteredBusinesses.length === 0">
+                        <div class="text-center py-12">
+                            <div class="text-gray-400 text-6xl mb-4">🏪</div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No hay empresas</h3>
+                            <p class="text-gray-500 mb-4">Comienza creando tu primera empresa</p>
+                            <button @click="showCreateModal = true" 
+                                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                                Crear la Primera
+                            </button>
+                        </div>
+                    </template>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <template x-for="business in filteredBusinesses" :key="business.business_id">
+                            <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                                <!-- Header del Card -->
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                            <span class="text-white font-bold text-sm" x-text="business.nombre?.charAt(0) || 'B'"></span>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-gray-900" x-text="business.nombre"></h3>
+                                            <p class="text-sm text-gray-500" x-text="business.business_id"></p>
+                                        </div>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button @click="editBusiness(business)" 
+                                                class="text-blue-600 hover:text-blue-800">
+                                            ✏️
+                                        </button>
+                                        <button @click="deleteBusiness(business)" 
+                                                class="text-red-600 hover:text-red-800">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Business Type y Estado -->
+                                <div class="mb-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded" 
+                                              x-text="getBusinessTypeName(business.tipo_base)"></span>
+                                        <span :class="business.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
+                                              class="text-xs px-2 py-1 rounded">
+                                            <span x-text="business.activo ? '✅ Activo' : '❌ Inactivo'"></span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Componentes Activos -->
+                                <div class="mb-4">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">🔧 Componentes:</h4>
+                                    <div class="flex flex-wrap gap-1">
+                                        <template x-for="comp in (business.configuracion?.componentes_activos || [])">
+                                            <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded" 
+                                                  x-text="comp"></span>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- Branding Colors -->
+                                <div class="mb-4" x-show="business.configuracion?.branding?.colores">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">🎨 Colores:</h4>
+                                    <div class="flex space-x-2">
+                                        <div class="h-6 w-6 rounded border border-gray-300" 
+                                             :style="`background-color: ${business.configuracion?.branding?.colores?.primary || '#ccc'}`"></div>
+                                        <div class="h-6 w-6 rounded border border-gray-300" 
+                                             :style="`background-color: ${business.configuracion?.branding?.colores?.secondary || '#ccc'}`"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex space-x-2 pt-4 border-t border-gray-200">
+                                    <button @click="viewDashboard(business)" 
+                                            class="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700">
+                                        👁️ Ver Dashboard
+                                    </button>
+                                    <button @click="configureBusiness(business)" 
+                                            class="flex-1 bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700">
+                                        ⚙️ Configurar
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Crear/Editar Business -->
+        <div x-show="showCreateModal || showEditModal" 
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            
+            <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-gray-900">
+                        <span x-show="showCreateModal">🆕 Crear Empresa</span>
+                        <span x-show="showEditModal">✏️ Editar Empresa</span>
+                    </h3>
+                    <button @click="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <span class="sr-only">Cerrar</span>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <form @submit.prevent="saveBusiness()" class="space-y-6">
+                    <!-- Información Básica -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Business ID *</label>
+                            <input type="text" 
+                                   x-model="formData.business_id" 
+                                   :disabled="showEditModal"
+                                   placeholder="ej: isp_telconorte"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+                            <input type="text" 
+                                   x-model="formData.nombre" 
+                                   placeholder="ej: TelcoNorte ISP"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   required>
+                        </div>
+                    </div>
+
+                    <!-- Business Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Business Type *</label>
+                        <select x-model="formData.tipo_base" 
+                                @change="updateComponentesFromType()"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                                required>
+                            <option value="">Selecciona un tipo de negocio</option>
+                            <template x-for="tipo in businessTypes">
+                                <option :value="tipo.tipo" x-text="`${tipo.nombre} (${tipo.tipo})`"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Estado -->
+                    <div>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" x-model="formData.activo" class="rounded">
+                            <span class="text-sm font-medium text-gray-700">Empresa activa</span>
+                        </label>
+                    </div>
+
+                    <!-- Configuración de Componentes -->
+                    <div x-show="selectedBusinessType">
+                        <h4 class="text-md font-semibold text-gray-900 mb-3">🔧 Componentes</h4>
+                        
+                        <!-- Componentes Base (siempre activos) -->
+                        <div class="mb-4">
+                            <h5 class="text-sm font-medium text-gray-700 mb-2">Base (obligatorios):</h5>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="comp in (selectedBusinessType?.componentes_base || [])">
+                                    <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded" 
+                                          x-text="comp.nombre"></span>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Componentes Opcionales -->
+                        <div x-show="selectedBusinessType?.componentes_opcionales?.length > 0">
+                            <h5 class="text-sm font-medium text-gray-700 mb-2">Opcionales (seleccionar):</h5>
+                            <div class="space-y-2">
+                                <template x-for="comp in (selectedBusinessType?.componentes_opcionales || [])">
+                                    <label class="flex items-center space-x-2">
+                                        <input type="checkbox" 
+                                               :value="comp.id"
+                                               x-model="formData.configuracion.componentes_activos"
+                                               class="rounded">
+                                        <span class="text-sm text-gray-700" x-text="comp.nombre"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Branding -->
+                    <div>
+                        <h4 class="text-md font-semibold text-gray-900 mb-3">🎨 Branding</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Color Primario</label>
+                                <input type="color" 
+                                       x-model="formData.configuracion.branding.colores.primary" 
+                                       class="w-full h-10 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Color Secundario</label>
+                                <input type="color" 
+                                       x-model="formData.configuracion.branding.colores.secondary" 
+                                       class="w-full h-10 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones del Modal -->
+                    <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                        <button type="button" @click="closeModal()" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            Cancelar
+                        </button>
+                        <button type="submit" 
+                                class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                            <span x-show="showCreateModal">Crear Empresa</span>
+                            <span x-show="showEditModal">Guardar Cambios</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div x-show="loading" 
+             class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                <span class="text-gray-700">Procesando...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function businessInstancesManager() {
+            return {
+                businesses: [],
+                businessTypes: [],
+                filteredBusinesses: [],
+                showCreateModal: false,
+                showEditModal: false,
+                loading: false,
+                currentEditId: null,
+                
+                // Filtros
+                filtroTipo: '',
+                filtroEstado: '',
+                
+                // Stats
+                stats: {
+                    total: 0,
+                    activos: 0
+                },
+                
+                // Datos del formulario
+                formData: {
+                    business_id: '',
+                    nombre: '',
+                    tipo_base: '',
+                    activo: true,
+                    configuracion: {
+                        branding: {
+                            colores: {
+                                primary: '#1e40af',
+                                secondary: '#059669'
+                            }
+                        },
+                        componentes_activos: []
+                    }
+                },
+                
+                selectedBusinessType: null,
+
+                async init() {
+                    await this.loadData();
+                },
+
+                async loadData() {
+                    this.loading = true;
+                    try {
+                        // Cargar Business Types y Businesses en paralelo
+                        const [businessTypesResponse, businessesResponse] = await Promise.all([
+                            fetch('/api/admin/business-types'),
+                            fetch('/api/admin/businesses')
+                        ]);
+
+                        if (businessTypesResponse.ok) {
+                            this.businessTypes = await businessTypesResponse.json();
+                        }
+
+                        if (businessesResponse.ok) {
+                            this.businesses = await businessesResponse.json();
+                            this.updateStats();
+                            this.applyFilters();
+                        }
+                    } catch (error) {
+                        console.error('Error loading data:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                updateStats() {
+                    this.stats.total = this.businesses.length;
+                    this.stats.activos = this.businesses.filter(b => b.activo).length;
+                },
+
+                applyFilters() {
+                    this.filteredBusinesses = this.businesses.filter(business => {
+                        if (this.filtroTipo && business.tipo_base !== this.filtroTipo) return false;
+                        if (this.filtroEstado === 'activo' && !business.activo) return false;
+                        if (this.filtroEstado === 'inactivo' && business.activo) return false;
+                        return true;
+                    });
+                },
+
+                getBusinessTypeName(tipo) {
+                    const businessType = this.businessTypes.find(bt => bt.tipo === tipo);
+                    return businessType ? businessType.nombre : tipo;
+                },
+
+                resetForm() {
+                    this.formData = {
+                        business_id: '',
+                        nombre: '',
+                        tipo_base: '',
+                        activo: true,
+                        configuracion: {
+                            branding: {
+                                colores: {
+                                    primary: '#1e40af',
+                                    secondary: '#059669'
+                                }
+                            },
+                            componentes_activos: []
+                        }
+                    };
+                    this.selectedBusinessType = null;
+                },
+
+                closeModal() {
+                    this.showCreateModal = false;
+                    this.showEditModal = false;
+                    this.currentEditId = null;
+                    this.resetForm();
+                },
+
+                editBusiness(business) {
+                    this.currentEditId = business.business_id;
+                    this.formData = JSON.parse(JSON.stringify(business));
+                    this.updateSelectedBusinessType();
+                    this.showEditModal = true;
+                },
+
+                updateComponentesFromType() {
+                    this.updateSelectedBusinessType();
+                    
+                    if (this.selectedBusinessType) {
+                        // Agregar todos los componentes base
+                        const baseComponents = this.selectedBusinessType.componentes_base?.map(c => c.id) || [];
+                        this.formData.configuracion.componentes_activos = [...baseComponents];
+                    }
+                },
+
+                updateSelectedBusinessType() {
+                    this.selectedBusinessType = this.businessTypes.find(bt => bt.tipo === this.formData.tipo_base);
+                },
+
+                async saveBusiness() {
+                    this.loading = true;
+                    
+                    try {
+                        const url = this.showEditModal 
+                            ? `/api/admin/businesses/${this.currentEditId}`
+                            : '/api/admin/businesses';
+                            
+                        const method = this.showEditModal ? 'PUT' : 'POST';
+                        
+                        const response = await fetch(url, {
+                            method: method,
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(this.formData)
+                        });
+
+                        if (response.ok) {
+                            await this.loadData();
+                            this.closeModal();
+                            alert('Empresa guardada exitosamente!');
+                        } else {
+                            const error = await response.text();
+                            alert('Error: ' + error);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error al guardar la empresa');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async deleteBusiness(business) {
+                    if (!confirm(`¿Estás seguro de eliminar la empresa "${business.nombre}"?`)) {
+                        return;
+                    }
+
+                    this.loading = true;
+                    try {
+                        const response = await fetch(`/api/admin/businesses/${business.business_id}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            await this.loadData();
+                            alert('Empresa eliminada exitosamente!');
+                        } else {
+                            const error = await response.text();
+                            alert('Error: ' + error);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error al eliminar la empresa');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                viewDashboard(business) {
+                    // Abrir dashboard de la empresa en nueva pestaña
+                    window.open(`/dashboard/${business.business_id}`, '_blank');
+                },
+
+                configureBusiness(business) {
+                    // Ir a configuración avanzada de la empresa
+                    window.location.href = `/admin/configure/${business.business_id}`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

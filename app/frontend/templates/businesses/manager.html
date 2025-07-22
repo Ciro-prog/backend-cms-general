@@ -37,7 +37,6 @@
     </div>
 
     <div x-data="businessInstancesManager()" x-cloak class="min-h-screen">
-
         <!-- Main Content -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             
@@ -81,11 +80,17 @@
             <!-- Business Instances List -->
             <div class="bg-white rounded-lg shadow">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">📋 Empresas Registradas</h2>
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-gray-900">📋 Empresas Registradas</h2>
+                        <button @click="showCreateModal = true" 
+                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            ➕ Crear Empresa
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="p-6">
-                    <template x-if="filteredBusinesses.length === 0">
+                    <template x-if="filteredBusinesses.length === 0 && !loading">
                         <div class="text-center py-12">
                             <div class="text-gray-400 text-6xl mb-4">🏪</div>
                             <h3 class="text-lg font-medium text-gray-900 mb-2">No hay empresas</h3>
@@ -94,6 +99,13 @@
                                     class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
                                 Crear la Primera
                             </button>
+                        </div>
+                    </template>
+
+                    <template x-if="loading">
+                        <div class="text-center py-12">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                            <p class="text-gray-500">Cargando empresas...</p>
                         </div>
                     </template>
 
@@ -231,10 +243,18 @@
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                                 required>
                             <option value="">Selecciona un tipo de negocio</option>
-                            <template x-for="tipo in businessTypes">
+                            <template x-for="tipo in businessTypes" :key="tipo.tipo">
                                 <option :value="tipo.tipo" x-text="`${tipo.nombre} (${tipo.tipo})`"></option>
                             </template>
                         </select>
+                        
+                        <!-- Debug info -->
+                        <div class="mt-2 text-xs text-gray-500" x-show="businessTypes.length === 0">
+                            <span class="text-red-600">⚠️ No se cargaron Business Types. Verifica la conexión.</span>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-500" x-show="businessTypes.length > 0">
+                            <span class="text-green-600">✅ <span x-text="businessTypes.length"></span> tipos de negocio disponibles</span>
+                        </div>
                     </div>
 
                     <!-- Estado -->
@@ -363,29 +383,73 @@
                 selectedBusinessType: null,
 
                 async init() {
+                    console.log('🚀 Inicializando Business Instances Manager...');
                     await this.loadData();
                 },
 
                 async loadData() {
                     this.loading = true;
                     try {
+                        console.log('🔄 Cargando datos...');
+                        
                         // Cargar Business Types y Businesses en paralelo
                         const [businessTypesResponse, businessesResponse] = await Promise.all([
                             fetch('/api/admin/business-types'),
                             fetch('/api/admin/businesses')
                         ]);
 
+                        console.log('📡 Business Types response:', businessTypesResponse.status);
+                        console.log('📡 Businesses response:', businessesResponse.status);
+
                         if (businessTypesResponse.ok) {
-                            this.businessTypes = await businessTypesResponse.json();
+                            const businessTypesResult = await businessTypesResponse.json();
+                            console.log('📊 Business Types raw:', businessTypesResult);
+                            
+                            // Parsing correcto de la respuesta
+                            if (businessTypesResult.data && Array.isArray(businessTypesResult.data)) {
+                                this.businessTypes = businessTypesResult.data;
+                                console.log('✅ Business Types cargados (format: {success, data}):', this.businessTypes.length);
+                            } else if (Array.isArray(businessTypesResult)) {
+                                this.businessTypes = businessTypesResult;
+                                console.log('✅ Business Types cargados (format: array):', this.businessTypes.length);
+                            } else {
+                                console.log('⚠️ Formato de Business Types inesperado:', typeof businessTypesResult);
+                                this.businessTypes = [];
+                            }
+                        } else {
+                            console.error('❌ Error cargando Business Types:', businessTypesResponse.status);
+                            this.businessTypes = [];
                         }
 
                         if (businessesResponse.ok) {
-                            this.businesses = await businessesResponse.json();
+                            const businessesResult = await businessesResponse.json();
+                            console.log('📊 Businesses raw:', businessesResult);
+                            
+                            // Parsing correcto de la respuesta
+                            if (businessesResult.data && Array.isArray(businessesResult.data)) {
+                                this.businesses = businessesResult.data;
+                                console.log('✅ Businesses cargados (format: {success, data}):', this.businesses.length);
+                            } else if (Array.isArray(businessesResult)) {
+                                this.businesses = businessesResult;
+                                console.log('✅ Businesses cargados (format: array):', this.businesses.length);
+                            } else {
+                                console.log('⚠️ Formato de Businesses inesperado:', typeof businessesResult);
+                                this.businesses = [];
+                            }
+                            
                             this.updateStats();
                             this.applyFilters();
+                        } else {
+                            console.error('❌ Error cargando Businesses:', businessesResponse.status);
+                            this.businesses = [];
                         }
+                        
+                        console.log('🏁 Datos cargados - Business Types:', this.businessTypes.length, 'Businesses:', this.businesses.length);
+                        
                     } catch (error) {
-                        console.error('Error loading data:', error);
+                        console.error('❌ Error loading data:', error);
+                        this.businessTypes = [];
+                        this.businesses = [];
                     } finally {
                         this.loading = false;
                     }
@@ -455,6 +519,7 @@
 
                 updateSelectedBusinessType() {
                     this.selectedBusinessType = this.businessTypes.find(bt => bt.tipo === this.formData.tipo_base);
+                    console.log('🔄 Selected business type:', this.selectedBusinessType);
                 },
 
                 async saveBusiness() {

@@ -1,8 +1,8 @@
 # ================================
-# app/frontend/routers/business_types.py
+# app/frontend/routers/business_types.py (PROTEGIDO)
 # ================================
 
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import httpx
@@ -17,7 +17,15 @@ logger = logging.getLogger(__name__)
 
 @router.get("/business-types", response_class=HTMLResponse)
 async def list_business_types(request: Request, current_user: dict = Depends(require_super_admin)):
-    """Listar Business Types"""
+    """Listar Business Types - SOLO SUPER ADMIN"""
+    
+    # Verificación adicional de rol
+    if current_user["role"] != "super_admin":
+        return templates.TemplateResponse("errors/403.html", {
+            "request": request,
+            "current_user": current_user,
+            "error": "Solo los Super Administradores pueden gestionar Business Types"
+        }, status_code=403)
     
     business_types = await get_business_types_from_api()
     

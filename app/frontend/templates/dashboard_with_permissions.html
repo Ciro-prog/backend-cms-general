@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CMS Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div x-data="dashboardManager()" x-cloak class="min-h-screen">
+        <!-- Header -->
+        <div class="bg-white shadow">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-6">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">🏠 Dashboard CMS Dinámico</h1>
+                        <p class="mt-1 text-sm text-gray-500">
+                            Bienvenido, {{ current_user.name }} ({{ current_user.role | title }})
+                        </p>
+                    </div>
+                    <form method="post" action="/logout">
+                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                            🚪 Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Estado del Sistema -->
+            <div class="bg-white rounded-lg shadow mb-8">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-gray-900">📊 Estado del Sistema</h2>
+                </div>
+                
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- MongoDB -->
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="h-8 w-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white text-sm">🗄️</span>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">MongoDB</p>
+                                    <p class="text-sm text-green-600">{{ system_info.services.mongodb }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- WhatsApp -->
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="h-8 w-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white text-sm">💬</span>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">WhatsApp</p>
+                                    <p class="text-sm text-blue-600">{{ system_info.services.waha }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- N8N -->
+                        <div class="bg-purple-50 p-4 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="h-8 w-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white text-sm">🔄</span>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">N8N</p>
+                                    <p class="text-sm text-purple-600">{{ system_info.services.n8n }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Versión -->
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="h-8 w-8 bg-gray-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white text-sm">⚙️</span>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">Versión</p>
+                                    <p class="text-sm text-gray-600">{{ system_info.version }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones según Role -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- SUPER ADMIN: Business Types -->
+                {% if current_user.role == 'super_admin' %}
+                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="h-12 w-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-xl">⚙️</span>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Business Types</h3>
+                                <p class="text-sm text-gray-500">Configurar templates de negocio</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Crea y gestiona los templates que definen diferentes tipos de negocio: ISP, Clínicas, Restaurantes, etc.
+                        </p>
+                        <div class="flex space-x-3">
+                            <a href="/business-types" 
+                               class="flex-1 bg-blue-600 text-white px-4 py-2 rounded text-center hover:bg-blue-700 transition-colors">
+                                🔧 Configurar Templates
+                            </a>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <span class="bg-red-100 text-red-800 px-2 py-1 rounded">Solo Super Admin</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ADMIN & SUPER ADMIN: Business Instances -->
+                {% if current_user.role in ['admin', 'super_admin'] %}
+                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="h-12 w-12 bg-green-500 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-xl">🏢</span>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Business Instances</h3>
+                                <p class="text-sm text-gray-500">Gestionar empresas</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Crea y administra empresas específicas que utilizan los templates de negocio. Configura branding y componentes.
+                        </p>
+                        <div class="flex space-x-3">
+                            <a href="/businesses" 
+                               class="flex-1 bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700 transition-colors">
+                                🏪 Gestionar Empresas
+                            </a>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded">Admin & Super Admin</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ADMIN: Configuración Avanzada -->
+                {% if current_user.role in ['admin', 'super_admin'] %}
+                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="h-12 w-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-xl">🔧</span>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Configuración</h3>
+                                <p class="text-sm text-gray-500">Entidades y vistas</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Configura entidades, campos, vistas y componentes para las empresas bajo tu administración.
+                        </p>
+                        <div class="flex space-x-3">
+                            <button @click="showConfigOptions = true" 
+                                    class="flex-1 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors">
+                                🎛️ Configurar
+                            </button>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded">Admin & Super Admin</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ALL USERS: Ver Business Dashboard -->
+                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="h-12 w-12 bg-orange-500 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-xl">📊</span>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Mi Dashboard</h3>
+                                <p class="text-sm text-gray-500">Dashboard personalizado</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Accede a tu dashboard personalizado con los datos y herramientas específicos de tu negocio.
+                        </p>
+                        <div class="flex space-x-3">
+                            {% if current_user.business_id %}
+                                <a href="/business-dashboard/{{ current_user.business_id }}" 
+                                   class="flex-1 bg-orange-600 text-white px-4 py-2 rounded text-center hover:bg-orange-700 transition-colors">
+                                    👁️ Ver Mi Dashboard
+                                </a>
+                            {% else %}
+                                <span class="flex-1 bg-gray-300 text-gray-500 px-4 py-2 rounded text-center cursor-not-allowed">
+                                    Sin business asignado
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded">Todos los usuarios</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN: Estadísticas -->
+                {% if current_user.role in ['admin', 'super_admin'] and stats %}
+                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="h-12 w-12 bg-indigo-500 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-xl">📈</span>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Estadísticas</h3>
+                                <p class="text-sm text-gray-500">Métricas del sistema</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Business Types:</span>
+                                <span class="font-semibold">{{ stats.businessTypes }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Empresas Activas:</span>
+                                <span class="font-semibold">{{ stats.activeBusinesses }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Total Empresas:</span>
+                                <span class="font-semibold">{{ stats.totalBusinesses }}</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded">Admin & Super Admin</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- SUPER ADMIN: Herramientas del Sistema -->
+                {% if current_user.role == 'super_admin' %}
+                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="h-12 w-12 bg-red-500 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-xl">🛠️</span>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Herramientas</h3>
+                                <p class="text-sm text-gray-500">Sistema y desarrollo</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <a href="/api/docs" target="_blank" 
+                               class="block w-full bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-sm text-center transition-colors">
+                                📚 API Documentation
+                            </a>
+                            <button @click="testIntegrations()" 
+                                    class="block w-full bg-yellow-100 hover:bg-yellow-200 px-3 py-2 rounded text-sm text-center transition-colors">
+                                🧪 Test Integraciones
+                            </button>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <span class="bg-red-100 text-red-800 px-2 py-1 rounded">Solo Super Admin</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Modal de Configuración -->
+            <div x-show="showConfigOptions" 
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                
+                <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                    <div class="mt-3">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">🔧 Opciones de Configuración</h3>
+                        
+                        <div class="space-y-3">
+                            {% if current_user.business_id %}
+                                <div>
+                                    <a href="/admin/entities/{{ current_user.business_id }}" 
+                                       class="block w-full bg-blue-600 text-white px-4 py-3 rounded text-center hover:bg-blue-700">
+                                        📋 Configurar Entidades
+                                    </a>
+                                </div>
+                                
+                                <div>
+                                    <a href="/admin/views/{{ current_user.business_id }}" 
+                                       class="block w-full bg-green-600 text-white px-4 py-3 rounded text-center hover:bg-green-700">
+                                        🖼️ Configurar Vistas
+                                    </a>
+                                </div>
+                                
+                                <div>
+                                    <a href="/admin/integrations/{{ current_user.business_id }}" 
+                                       class="block w-full bg-purple-600 text-white px-4 py-3 rounded text-center hover:bg-purple-700">
+                                        🔌 Configurar APIs
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center text-gray-500 py-4">
+                                    Sin business asignado para configurar
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mt-6 text-center">
+                            <button @click="showConfigOptions = false" 
+                                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-12 text-center text-gray-500 text-sm">
+                <p>CMS Dinámico v1.0.0 - Sistema de gestión configurable</p>
+                <p class="mt-1">Usuario: {{ current_user.username }} | Rol: {{ current_user.role | title }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function dashboardManager() {
+            return {
+                showConfigOptions: false,
+                
+                async testIntegrations() {
+                    try {
+                        const response = await fetch('/api/test/all');
+                        if (response.ok) {
+                            const result = await response.json();
+                            alert(`Test completado: ${result.message || 'Éxito'}`);
+                        } else {
+                            alert('Error ejecutando tests');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error de conexión');
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

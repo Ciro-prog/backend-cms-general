@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Denegado - CMS Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full text-center">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <!-- Icon -->
+            <div class="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                <span class="text-red-600 text-3xl">🚫</span>
+            </div>
+            
+            <!-- Title -->
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Acceso Denegado</h1>
+            
+            <!-- Message -->
+            <p class="text-gray-600 mb-6">
+                {{ error or "No tienes permisos para acceder a esta página" }}
+            </p>
+            
+            <!-- User Info -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <p class="text-sm text-gray-600">
+                    <strong>Usuario:</strong> {{ current_user.username if current_user else 'Desconocido' }}<br>
+                    <strong>Rol:</strong> {{ current_user.role | title if current_user else 'Sin rol' }}
+                </p>
+            </div>
+            
+            <!-- Actions -->
+            <div class="space-y-3">
+                <a href="/dashboard" 
+                   class="block w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
+                    🏠 Volver al Dashboard
+                </a>
+                
+                <form method="post" action="/logout" class="inline-block w-full">
+                    <button type="submit" 
+                            class="w-full bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition-colors">
+                        🚪 Cerrar Sesión
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Additional Info -->
+        <div class="mt-6 text-sm text-gray-500">
+            <p>Si crees que esto es un error, contacta al administrador del sistema.</p>
+        </div>
+    </div>
+</body>
+</html>

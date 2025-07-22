@@ -1,68 +1,126 @@
 # ================================
-# app/frontend/routers/dashboard.py - BÁSICO
+# app/frontend/routers/dashboard.py (ACTUALIZADO CON PERMISOS)
 # ================================
 
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+import httpx
+import logging
 
 from ..auth import require_auth
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/frontend/templates")
+logger = logging.getLogger(__name__)
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, current_user: dict = Depends(require_auth)):
-    """Dashboard básico"""
+    """Dashboard principal con permisos"""
     
-    # HTML básico inline por ahora
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Dashboard - CMS Dinámico</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-    </head>
-    <body class="bg-gray-100">
-        <div class="container mx-auto p-8">
-            <div class="bg-white rounded-lg shadow p-6">
-                <h1 class="text-3xl font-bold text-gray-800 mb-4">🎉 ¡Bienvenido al CMS Dinámico!</h1>
-                
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                    <strong>✅ ¡Sistema funcionando correctamente!</strong>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-blue-50 p-4 rounded">
-                        <h3 class="font-bold text-blue-800">👤 Usuario Actual</h3>
-                        <p><strong>Nombre:</strong> {current_user.get('name', 'N/A')}</p>
-                        <p><strong>Usuario:</strong> {current_user.get('username', 'N/A')}</p>
-                        <p><strong>Rol:</strong> {current_user.get('role', 'N/A')}</p>
-                    </div>
-                    
-                    <div class="bg-yellow-50 p-4 rounded">
-                        <h3 class="font-bold text-yellow-800">🚀 Sistema</h3>
-                        <p><strong>Estado:</strong> ✅ Operativo</p>
-                        <p><strong>Versión:</strong> 1.0.0</p>
-                        <p><strong>Base de datos:</strong> ✅ Conectada</p>
-                    </div>
-                </div>
-                
-                <div class="mt-6 flex space-x-4">
-                    <a href="/api/docs" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                        📚 API Docs
-                    </a>
-                    <form method="post" action="/logout" style="display: inline;">
-                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-                            🚪 Cerrar Sesión
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    # Obtener información del sistema
+    system_info = await get_system_health()
     
-    from fastapi.responses import HTMLResponse
-    return HTMLResponse(content=html_content)
+    # Obtener estadísticas según rol
+    stats = {}
+    if current_user["role"] in ["admin", "super_admin"]:
+        stats = await get_admin_stats()
+    
+    # Template con datos del usuario y sistema
+    return templates.TemplateResponse("dashboard_with_permissions.html", {
+        "request": request,
+        "current_user": current_user,
+        "system_info": system_info,
+        "stats": stats
+    })
+
+@router.get("/business-dashboard/{business_id}", response_class=HTMLResponse)
+async def business_dashboard(
+    request: Request, 
+    business_id: str,
+    current_user: dict = Depends(require_auth)
+):
+    """Dashboard específico del business"""
+    
+    # Verificar permisos de acceso al business
+    if current_user["role"] != "super_admin" and current_user.get("business_id") != business_id:
+        return templates.TemplateResponse("errors/403.html", {
+            "request": request,
+            "error": "No tienes permisos para acceder a este dashboard"
+        }, status_code=403)
+    
+    # Cargar datos del business
+    business_data = await get_business_data(business_id)
+    
+    return templates.TemplateResponse("business_dashboard.html", {
+        "request": request,
+        "current_user": current_user,
+        "business_id": business_id,
+        "business_data": business_data
+    })
+
+# === FUNCIONES AUXILIARES ===
+
+async def get_system_health():
+    """Obtener estado del sistema"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:8000/health", timeout=5.0)
+            if response.status_code == 200:
+                return response.json()
+    except Exception as e:
+        logger.error(f"Error obteniendo health: {e}")
+    
+    return {
+        "status": "unknown",
+        "services": {
+            "mongodb": "❌ Error",
+            "waha": "❌ Error", 
+            "n8n": "❌ Error"
+        },
+        "version": "1.0.0"
+    }
+
+async def get_admin_stats():
+    """Obtener estadísticas para admins"""
+    stats = {
+        "businessTypes": 0,
+        "totalBusinesses": 0,
+        "activeBusinesses": 0
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            # Business Types
+            bt_response = await client.get("http://localhost:8000/api/admin/business-types", timeout=10.0)
+            if bt_response.status_code == 200:
+                bt_data = bt_response.json()
+                business_types = bt_data.get("data", []) if isinstance(bt_data, dict) else bt_data
+                stats["businessTypes"] = len(business_types)
+            
+            # Businesses
+            b_response = await client.get("http://localhost:8000/api/admin/businesses", timeout=10.0)
+            if b_response.status_code == 200:
+                b_data = b_response.json()
+                businesses = b_data.get("data", []) if isinstance(b_data, dict) else b_data
+                stats["totalBusinesses"] = len(businesses)
+                stats["activeBusinesses"] = len([b for b in businesses if b.get("activo", False)])
+                
+    except Exception as e:
+        logger.error(f"Error obteniendo estadísticas: {e}")
+    
+    return stats
+
+async def get_business_data(business_id: str):
+    """Obtener datos específicos del business"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"http://localhost:8000/api/business/dashboard/{business_id}", timeout=10.0)
+            if response.status_code == 200:
+                return response.json()
+    except Exception as e:
+        logger.error(f"Error obteniendo datos del business {business_id}: {e}")
+    
+    return {
+        "error": "No se pudieron cargar los datos del business"
+    }

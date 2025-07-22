@@ -52,7 +52,7 @@
             </div>
             
             <div class="p-6">
-                <template x-if="businessTypes.length === 0">
+                <template x-if="businessTypes.length === 0 && !loading">
                     <div class="text-center py-12">
                         <div class="text-gray-400 text-6xl mb-4">📄</div>
                         <h3 class="text-lg font-medium text-gray-900 mb-2">No hay Business Types</h3>
@@ -64,14 +64,21 @@
                     </div>
                 </template>
 
+                <template x-if="loading">
+                    <div class="text-center py-12">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <p class="text-gray-500">Cargando Business Types...</p>
+                    </div>
+                </template>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <template x-for="businessType in businessTypes" :key="businessType.tipo">
                         <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                             <!-- Header del Card -->
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 class="text-lg font-semibold text-gray-900" x-text="businessType.nombre"></h3>
-                                    <p class="text-sm text-gray-500" x-text="businessType.tipo"></p>
+                                    <h3 class="text-lg font-semibold text-gray-900" x-text="businessType.nombre || 'Sin nombre'"></h3>
+                                    <p class="text-sm text-gray-500" x-text="businessType.tipo || 'Sin tipo'"></p>
                                 </div>
                                 <div class="flex space-x-2">
                                     <button @click="editBusinessType(businessType)" 
@@ -86,15 +93,18 @@
                             </div>
 
                             <!-- Descripción -->
-                            <p class="text-sm text-gray-600 mb-4" x-text="businessType.descripcion"></p>
+                            <p class="text-sm text-gray-600 mb-4" x-text="businessType.descripcion || 'Sin descripción'"></p>
 
                             <!-- Componentes Base -->
                             <div class="mb-3">
                                 <h4 class="text-sm font-medium text-gray-700 mb-2">🔧 Componentes Base:</h4>
                                 <div class="flex flex-wrap gap-1">
-                                    <template x-for="comp in businessType.componentes_base">
+                                    <template x-for="comp in (businessType.componentes_base || [])">
                                         <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded" 
-                                              x-text="comp.nombre"></span>
+                                              x-text="comp.nombre || comp.id"></span>
+                                    </template>
+                                    <template x-if="!businessType.componentes_base || businessType.componentes_base.length === 0">
+                                        <span class="text-xs text-gray-400">Sin componentes base</span>
                                     </template>
                                 </div>
                             </div>
@@ -105,9 +115,15 @@
                                 <div class="flex flex-wrap gap-1">
                                     <template x-for="comp in businessType.componentes_opcionales">
                                         <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded" 
-                                              x-text="comp.nombre"></span>
+                                              x-text="comp.nombre || comp.id"></span>
                                     </template>
                                 </div>
+                            </div>
+
+                            <!-- Info adicional -->
+                            <div class="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500">
+                                <p>ID: <span x-text="businessType._id"></span></p>
+                                <p>Creado: <span x-text="new Date(businessType.created_at).toLocaleDateString()"></span></p>
                             </div>
                         </div>
                     </template>
@@ -311,22 +327,48 @@
                 },
 
                 async init() {
+                    console.log('🚀 Inicializando Business Types Manager...');
                     await this.loadBusinessTypes();
                 },
 
                 async loadBusinessTypes() {
+                    console.log('🔄 Cargando business types...');
                     this.loading = true;
+                    
                     try {
                         const response = await fetch('/api/admin/business-types');
+                        console.log('📡 Response status:', response.status);
+                        
                         if (response.ok) {
-                            this.businessTypes = await response.json();
+                            const result = await response.json();
+                            console.log('📊 Raw result:', result);
+                            
+                            // Extraer datos del formato de respuesta del backend
+                            if (result.data && Array.isArray(result.data)) {
+                                this.businessTypes = result.data;
+                                console.log('✅ Business types cargados (format: {success, data}):', this.businessTypes.length);
+                            } else if (Array.isArray(result)) {
+                                this.businessTypes = result;
+                                console.log('✅ Business types cargados (format: array):', this.businessTypes.length);
+                            } else {
+                                console.log('⚠️ Formato de respuesta inesperado:', typeof result);
+                                this.businessTypes = [];
+                            }
+                            
+                            // Debug: mostrar los primeros elementos
+                            if (this.businessTypes.length > 0) {
+                                console.log('📋 Primer business type:', this.businessTypes[0]);
+                            }
                         } else {
-                            console.error('Error loading business types');
+                            console.error('❌ Error en response:', response.status, response.statusText);
+                            this.businessTypes = [];
                         }
                     } catch (error) {
-                        console.error('Error:', error);
+                        console.error('❌ Error cargando business types:', error);
+                        this.businessTypes = [];
                     } finally {
                         this.loading = false;
+                        console.log('🏁 Carga finalizada. Total:', this.businessTypes.length);
                     }
                 },
 

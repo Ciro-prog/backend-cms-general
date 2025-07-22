@@ -21,7 +21,13 @@ cryptography==42.0.0
 # HTTP Client - ✅ YA INSTALADO
 httpx==0.26.0
 
+
 # DEPENDENCIAS RESTANTES - Instalar estas:
 pydantic-settings>=2.1.0
 redis>=5.0.1
 aiofiles>=23.2.1
+
+# 🆕 FRONTEND DEPENDENCIES
+jinja2>=3.1.2              # Templates HTML
+python-multipart>=0.0.6    # Formularios HTML
+itsdangerous>=2.1.2        # Sesiones seguras

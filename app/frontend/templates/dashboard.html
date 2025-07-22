@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CMS Dinámico{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_description %}Panel de control principal{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- API Status -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Estado API</dt>
+                        <dd class="text-lg font-medium text-gray-900">{{ health_data.status|title }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MongoDB -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="h-8 w-8 bg-{% if 'Conectado' in health_data.services.mongodb %}green{% else %}red{% endif %}-500 rounded-full flex items-center justify-center">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 1.79 4 4 4h8c2.21 0 4-1.79 4-4V7c0-2.21-1.79-4-4-4H8c-2.21 0-4 1.79-4 4z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">MongoDB</dt>
+                        <dd class="text-lg font-medium text-gray-900">{% if 'Conectado' in health_data.services.mongodb %}Conectado{% else %}Desconectado{% endif %}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="h-8 w-8 bg-{% if 'sesiones' in health_data.services.waha %}green{% else %}yellow{% endif %}-500 rounded-full flex items-center justify-center">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">WhatsApp</dt>
+                        <dd class="text-lg font-medium text-gray-900">{{ health_data.services.waha }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- N8N -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="h-8 w-8 bg-{% if 'workflows' in health_data.services.n8n %}green{% else %}yellow{% endif %}-500 rounded-full flex items-center justify-center">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">N8N</dt>
+                        <dd class="text-lg font-medium text-gray-900">{{ health_data.services.n8n }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del Sistema -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Información del Backend -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Información del Sistema</h3>
+            <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Versión</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ info_data.version }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Entorno</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ info_data.environment|title }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Python</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ info_data.python_version }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Última actualización</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ current_time }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Integraciones -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Integraciones</h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="h-4 w-4 bg-green-500 rounded-full mr-3"></div>
+                        <span class="text-sm font-medium text-gray-900">WAHA WhatsApp</span>
+                    </div>
+                    <span class="text-sm text-gray-500">{{ info_data.integrations.waha_url }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="h-4 w-4 bg-green-500 rounded-full mr-3"></div>
+                        <span class="text-sm font-medium text-gray-900">N8N Workflows</span>
+                    </div>
+                    <span class="text-sm text-gray-500">{{ info_data.integrations.n8n_url }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="h-4 w-4 bg-green-500 rounded-full mr-3"></div>
+                        <span class="text-sm font-medium text-gray-900">MongoDB</span>
+                    </div>
+                    <span class="text-sm text-gray-500">{{ info_data.integrations.mongodb_url|truncate(30) }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Datos del Business Actual -->
+{% if current_user.business_id %}
+<div class="bg-white shadow rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Business Actual</h3>
+        <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">{{ current_user.business_id }}</h3>
+                    <p class="text-sm text-blue-700 mt-1">Business activo para este usuario</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Acciones Rápidas -->
+<div class="bg-white shadow rounded-lg mt-8">
+    <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% if current_user.role == 'super_admin' %}
+            <a href="/business-types" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                <svg class="h-5 w-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                Business Types
+            </a>
+            {% endif %}
+            
+            {% if current_user.role in ['super_admin', 'admin'] %}
+            <a href="/businesses" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                <svg class="h-5 w-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                Empresas
+            </a>
+            {% endif %}
+            
+            <button onclick="refreshData()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                <svg class="h-5 w-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Actualizar
+            </button>
+            
+            <a href="/api/docs" target="_blank" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                <svg class="h-5 w-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                API Docs
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshData() {
+    location.reload();
+}
+
+// Auto-refresh cada 30 segundos
+setInterval(function() {
+    // Solo actualizar las cards de estado sin recargar la página completa
+    fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Estado actualizado:', data);
+        })
+        .catch(error => console.log('Error actualizando estado:', error));
+}, 30000);
+</script>
+{% endblock %}

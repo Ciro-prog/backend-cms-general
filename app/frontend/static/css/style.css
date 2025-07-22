@@ -1,0 +1,18 @@
+/* CMS Dinámico - Estilos personalizados */
+.cms-logo {
+    max-width: 200px;
+}
+
+.sidebar-active {
+    background-color: #eff6ff;
+    border-right: 2px solid #3b82f6;
+}
+
+.flash-message {
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

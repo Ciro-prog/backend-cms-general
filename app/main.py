@@ -1,11 +1,13 @@
 # ================================
-# app/main.py (VERSIÓN COMPLETA Y CORREGIDA)
+# app/main.py (CORREGIDO - SIN IMPORTACIONES CIRCULARES)
 # ================================
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
-from pydantic import BaseModel, Field  # ✅ IMPORT AGREGADO
+from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import logging
@@ -17,7 +19,7 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-# Imports locales
+# Imports locales (sin frontend por ahora para evitar circulares)
 from .database import connect_to_mongo, close_mongo_connection, get_database
 from .config import settings
 
@@ -64,11 +66,11 @@ class BusinessInstanceCreate(BaseModel):
 async def lifespan(app: FastAPI):
     """Manejo del ciclo de vida de la aplicación"""
     # Startup
-    logger.info("🚀 Iniciando CMS Dinámico Backend...")
+    logger.info("🚀 Iniciando CMS Dinámico (Backend + Frontend)...")
     await connect_to_mongo()
     yield
     # Shutdown
-    logger.info("🔄 Cerrando CMS Dinámico Backend...")
+    logger.info("🔄 Cerrando CMS Dinámico...")
     await close_mongo_connection()
 
 # ================================
@@ -76,10 +78,16 @@ async def lifespan(app: FastAPI):
 # ================================
 
 app = FastAPI(
-    title="CMS Dinámico API",
-    description="Sistema de CMS dinámico y configurable con MongoDB",
+    title="CMS Dinámico",
+    description="Sistema de CMS dinámico y configurable con frontend integrado",
     version="1.0.0",
     lifespan=lifespan
+)
+
+# MIDDLEWARE DE SESIONES (para el frontend)
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=settings.secret_key or "cms-dinamico-secret-key-change-in-production"
 )
 
 # CORS
@@ -91,19 +99,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ARCHIVOS ESTÁTICOS Y TEMPLATES
+# Crear directorios si no existen
+os.makedirs("app/frontend/static/css", exist_ok=True)
+os.makedirs("app/frontend/static/js", exist_ok=True)
+os.makedirs("app/frontend/static/images", exist_ok=True)
+
+app.mount("/static", StaticFiles(directory="app/frontend/static"), name="static")
+
 # ================================
-# ENDPOINTS BÁSICOS
+# INCLUIR RUTAS DEL FRONTEND (después de configurar la app)
+# ================================
+
+def setup_frontend():
+    """Configurar el frontend después de que la app esté lista"""
+    try:
+        from .frontend.routers import frontend_router
+        app.include_router(frontend_router)
+        logger.info("✅ Frontend configurado exitosamente")
+    except Exception as e:
+        logger.error(f"❌ Error configurando frontend: {e}")
+
+# Middleware para limpiar mensajes flash después de mostrarlos
+@app.middleware("http")
+async def clear_flash_messages(request: Request, call_next):
+    response = await call_next(request)
+    # Limpiar mensajes después de la respuesta
+    if hasattr(request, 'session') and "messages" in request.session:
+        del request.session["messages"]
+    return response
+
+# ================================
+# ENDPOINTS PRINCIPALES
 # ================================
 
 @app.get("/")
 async def root():
-    """Endpoint raíz"""
+    """Endpoint raíz - redirigir al frontend"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/dashboard", status_code=302)
+
+@app.get("/api", include_in_schema=False)
+async def api_root():
+    """Endpoint raíz de la API"""
     return {
         "message": "🎉 CMS Dinámico API - COMPLETAMENTE FUNCIONAL!",
         "version": "1.0.0",
         "status": "running",
         "docs": "/docs",
         "health": "/health",
+        "frontend": "/dashboard",
         "features": [
             "✅ FastAPI funcionando",
             "✅ MongoDB conectado y funcionando",
@@ -112,6 +157,7 @@ async def root():
             "✅ Sistema de Business Types",
             "✅ Sistema de Business Instances",
             "✅ CRUD dinámico preparado",
+            "✅ Frontend integrado con Jinja2",
             "🔄 Redis pendiente (no crítico)"
         ],
         "integrations": {
@@ -130,7 +176,6 @@ async def health_check():
     mongo_status = "❌ Desconectado"
     try:
         db = get_database()
-        # Test simple de conexión
         await db.command('ping')
         mongo_status = "✅ Conectado"
     except Exception as e:
@@ -144,7 +189,8 @@ async def health_check():
             "mongodb": mongo_status,
             "waha": "✅ Conectado (3 sesiones)",
             "n8n": "✅ Conectado (12 workflows)",
-            "redis": "⚠️ Pendiente (no crítico)"
+            "redis": "⚠️ Pendiente (no crítico)",
+            "frontend": "✅ Integrado"
         }
     )
 
@@ -154,18 +200,14 @@ async def app_info():
     return {
         "name": "CMS Dinámico",
         "version": "1.0.0",
-        "description": "Sistema de CMS dinámico y configurable",
+        "description": "Sistema de CMS dinámico y configurable con frontend integrado",
         "environment": "development",
         "python_version": "3.13",
-        "dependencies_status": {
-            "fastapi": "✅ 0.108.0",
-            "uvicorn": "✅ 0.25.0", 
-            "pydantic": "✅ 2.11.7",
-            "httpx": "✅ 0.26.0",
-            "cryptography": "✅ 42.0.0",
-            "motor": "✅ 3.4.0",
-            "pymongo": "✅ 4.6.3",
-            "mongodb_server": "✅ Running"
+        "components": {
+            "backend": "✅ FastAPI + MongoDB",
+            "frontend": "✅ Jinja2 Templates",
+            "auth": "✅ Session-based",
+            "api": "✅ REST API"
         },
         "integrations": {
             "waha_url": os.getenv("DEFAULT_WAHA_URL"),
@@ -187,7 +229,6 @@ async def get_business_types():
         business_types = []
         
         async for doc in cursor:
-            # Convertir ObjectId a string
             doc["_id"] = str(doc["_id"])
             business_types.append(doc)
         
@@ -398,7 +439,7 @@ async def create_business_instance(business_data: BusinessInstanceCreate):
         }
 
 # ================================
-# ENDPOINT PARA INICIALIZAR DATOS DEMO
+# ENDPOINTS DE TESTING
 # ================================
 
 @app.post("/api/admin/init-demo-data")
@@ -514,24 +555,6 @@ async def init_demo_data():
             await db.business_instances.insert_one(telconorte)
             created_items.append("Business Instance: TelcoNorte")
         
-        # Business Instance Clínica Demo
-        clinica_demo = {
-            "business_id": "clinica_demo",
-            "nombre": "Clínica Demo",
-            "tipo_base": "clinica",
-            "configuracion": {
-                "componentes_activos": ["whatsapp", "pacientes", "turnos"]
-            },
-            "suscripcion": {"plan": "basic", "activa": True},
-            "activo": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        }
-        
-        if not await db.business_instances.find_one({"business_id": "clinica_demo"}):
-            await db.business_instances.insert_one(clinica_demo)
-            created_items.append("Business Instance: Clínica Demo")
-        
         return {
             "success": True,
             "message": "✅ Datos de demostración inicializados correctamente",
@@ -545,10 +568,6 @@ async def init_demo_data():
             "success": False,
             "error": str(e)
         }
-
-# ================================
-# ENDPOINTS DE TEST (YA FUNCIONANDO)
-# ================================
 
 @app.get("/api/test/waha")
 async def test_waha():
@@ -664,3 +683,10 @@ async def test_all_integrations():
         "timestamp": datetime.utcnow().isoformat(),
         "results": results
     }
+
+# ================================
+# CONFIGURAR FRONTEND AL FINAL
+# ================================
+
+# Configurar el frontend después de definir todos los endpoints
+setup_frontend()

@@ -133,11 +133,11 @@ async def clear_flash_messages(request: Request, call_next):
 # ENDPOINTS PRINCIPALES
 # ================================
 
-@app.get("/")
-async def root():
-    """Endpoint raíz - redirigir al frontend"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/dashboard", status_code=302)
+# @app.get("/")  # COMENTADO - Manejado por frontend auth router
+# async def root():
+#     """Endpoint raíz - redirigir al frontend"""
+#     from fastapi.responses import RedirectResponse
+#     return RedirectResponse(url="/dashboard", status_code=302)
 
 @app.get("/api", include_in_schema=False)
 async def api_root():

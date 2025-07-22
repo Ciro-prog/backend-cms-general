@@ -1,72 +1,69 @@
 # ================================
-# app/routers/auth.py - SIMPLIFICADO
+# app/frontend/routers/auth.py
 # ================================
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
-from typing import Dict, Any
+from fastapi import APIRouter, Request, Form, Depends
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 import logging
 
-logger = logging.getLogger(__name__)
+from ..auth import authenticate_user, login_user, logout_user, get_current_user
+
 router = APIRouter()
+templates = Jinja2Templates(directory="app/frontend/templates")
+logger = logging.getLogger(__name__)
 
-# Importar funciones de autenticación del frontend
-try:
-    from ..frontend.auth import get_current_user
-except ImportError:
-    # Fallback si no está disponible
-    def get_current_user(request: Request):
-        if hasattr(request, 'session') and "user" in request.session:
-            return request.session["user"]
-        raise HTTPException(status_code=401, detail="No autenticado")
+@router.get("/", response_class=HTMLResponse)
+async def root_redirect(request: Request):
+    """Ruta raíz - redirigir según autenticación"""
+    current_user = get_current_user(request)
+    
+    if current_user:
+        return RedirectResponse(url="/dashboard", status_code=302)
+    else:
+        return RedirectResponse(url="/login", status_code=302)
 
-@router.get("/me")
-async def get_current_user_info(request: Request):
-    """Obtener información del usuario actual"""
-    try:
-        user = get_current_user(request)
-        return {
-            "success": True,
-            "data": user,
-            "message": "Usuario actual obtenido"
-        }
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        logger.error(f"Error obteniendo usuario actual: {e}")
-        raise HTTPException(status_code=500, detail="Error interno")
+@router.get("/login", response_class=HTMLResponse)
+async def login_form(request: Request):
+    """Mostrar formulario de login"""
+    current_user = get_current_user(request)
+    if current_user:
+        return RedirectResponse(url="/dashboard", status_code=302)
+    
+    error_message = None
+    if hasattr(request, 'session') and "login_error" in request.session:
+        error_message = request.session.pop("login_error")
+    
+    return templates.TemplateResponse("auth/login.html", {
+        "request": request,
+        "error": error_message
+    })
+
+@router.post("/login")
+async def login_submit(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...)
+):
+    """Procesar login"""
+    user = authenticate_user(username, password)
+    
+    if user:
+        login_user(request, user)
+        logger.info(f"Usuario {username} logueado exitosamente")
+        return RedirectResponse(url="/dashboard", status_code=302)
+    else:
+        if not hasattr(request, 'session'):
+            request.session = {}
+        request.session["login_error"] = "Usuario o contraseña incorrectos"
+        return RedirectResponse(url="/login", status_code=302)
 
 @router.post("/logout")
-async def api_logout(request: Request):
-    """Cerrar sesión via API"""
-    try:
-        if hasattr(request, 'session'):
-            request.session.clear()
-        
-        return {
-            "success": True,
-            "message": "Sesión cerrada exitosamente"
-        }
-    except Exception as e:
-        logger.error(f"Error en logout: {e}")
-        raise HTTPException(status_code=500, detail="Error cerrando sesión")
-
-@router.get("/status")
-async def auth_status(request: Request):
-    """Verificar estado de autenticación"""
-    try:
-        user = get_current_user(request)
-        return {
-            "authenticated": True,
-            "user": user
-        }
-    except:
-        return {
-            "authenticated": False,
-            "user": None
-        }
-
-@router.post("/webhook")
-async def dummy_webhook(request: Request):
-    """Webhook dummy para compatibilidad"""
-    return JSONResponse({"success": True, "message": "Webhook no implementado"})
+async def logout(request: Request):
+    """Cerrar sesión"""
+    current_user = get_current_user(request)
+    if current_user:
+        logger.info(f"Usuario {current_user['username']} cerró sesión")
+    
+    logout_user(request)
+    return RedirectResponse(url="/login", status_code=302)

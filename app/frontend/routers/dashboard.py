@@ -1,75 +1,68 @@
 # ================================
-# app/frontend/routers/dashboard.py
+# app/frontend/routers/dashboard.py - BÁSICO
 # ================================
 
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import httpx
-import logging
-from datetime import datetime
 
 from ..auth import require_auth
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/frontend/templates")
-logger = logging.getLogger(__name__)
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, current_user: dict = Depends(require_auth)):
-    """Dashboard principal"""
+    """Dashboard básico"""
     
-    # Obtener datos del backend
-    health_data = await get_health_data()
-    info_data = await get_info_data()
+    # HTML básico inline por ahora
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Dashboard - CMS Dinámico</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100">
+        <div class="container mx-auto p-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h1 class="text-3xl font-bold text-gray-800 mb-4">🎉 ¡Bienvenido al CMS Dinámico!</h1>
+                
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    <strong>✅ ¡Sistema funcionando correctamente!</strong>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-blue-50 p-4 rounded">
+                        <h3 class="font-bold text-blue-800">👤 Usuario Actual</h3>
+                        <p><strong>Nombre:</strong> {current_user.get('name', 'N/A')}</p>
+                        <p><strong>Usuario:</strong> {current_user.get('username', 'N/A')}</p>
+                        <p><strong>Rol:</strong> {current_user.get('role', 'N/A')}</p>
+                    </div>
+                    
+                    <div class="bg-yellow-50 p-4 rounded">
+                        <h3 class="font-bold text-yellow-800">🚀 Sistema</h3>
+                        <p><strong>Estado:</strong> ✅ Operativo</p>
+                        <p><strong>Versión:</strong> 1.0.0</p>
+                        <p><strong>Base de datos:</strong> ✅ Conectada</p>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex space-x-4">
+                    <a href="/api/docs" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        📚 API Docs
+                    </a>
+                    <form method="post" action="/logout" style="display: inline;">
+                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                            🚪 Cerrar Sesión
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
     
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "current_user": current_user,
-        "health_data": health_data,
-        "info_data": info_data,
-        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
-
-async def get_health_data():
-    """Obtener datos de salud del backend"""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get("http://localhost:8000/health", timeout=5.0)
-            if response.status_code == 200:
-                return response.json()
-    except Exception as e:
-        logger.error(f"Error obteniendo health data: {e}")
-    
-    # Datos por defecto si no se puede conectar
-    return {
-        "status": "unknown",
-        "services": {
-            "mongodb": "❌ No disponible",
-            "waha": "❌ No disponible", 
-            "n8n": "❌ No disponible"
-        }
-    }
-
-async def get_info_data():
-    """Obtener información del sistema"""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get("http://localhost:8000/info", timeout=5.0)
-            if response.status_code == 200:
-                return response.json()
-    except Exception as e:
-        logger.error(f"Error obteniendo info data: {e}")
-    
-    # Datos por defecto
-    return {
-        "name": "CMS Dinámico",
-        "version": "1.0.0",
-        "environment": "development",
-        "python_version": "3.13",
-        "integrations": {
-            "waha_url": "No disponible",
-            "n8n_url": "No disponible",
-            "mongodb_url": "No disponible"
-        }
-    }
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html_content)

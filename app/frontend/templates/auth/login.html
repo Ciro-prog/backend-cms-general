@@ -5,98 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - CMS Dinámico</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center">
     <div class="max-w-md w-full space-y-8 p-8">
-        <!-- Logo y título -->
         <div class="text-center">
-            <div class="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center">
-                <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                </svg>
-            </div>
-            <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
-                CMS Dinámico
-            </h2>
-            <p class="mt-2 text-sm text-gray-600">
-                Inicia sesión para continuar
-            </p>
+            <h2 class="mt-6 text-3xl font-extrabold text-gray-900">CMS Dinámico</h2>
+            <p class="mt-2 text-sm text-gray-600">Inicia sesión para continuar</p>
         </div>
 
-        <!-- Mensajes de error -->
         {% if error %}
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flash-message">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
             <strong>Error:</strong> {{ error }}
         </div>
         {% endif %}
 
-        <!-- Información de usuarios de prueba -->
         <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded text-sm">
             <strong>👤 Usuarios de prueba:</strong>
             <ul class="mt-2 space-y-1">
-                <li><strong>superadmin</strong> / superadmin - Super Admin</li>
-                <li><strong>admin</strong> / admin - Administrador</li>
-                <li><strong>usuario</strong> / usuario - Usuario</li>
+                <li><strong>superadmin</strong> / superadmin</li>
+                <li><strong>admin</strong> / admin</li>
+                <li><strong>usuario</strong> / usuario</li>
             </ul>
         </div>
 
-        <!-- Formulario de login -->
         <form class="mt-8 space-y-6" method="post" action="/login">
-            <div class="rounded-md shadow-sm space-y-4">
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700">
-                        Usuario
-                    </label>
-                    <input 
-                        id="username" 
-                        name="username" 
-                        type="text" 
-                        autocomplete="username" 
-                        required 
-                        class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" 
-                        placeholder="Ingresa tu usuario"
-                        value="superadmin"
-                    >
-                </div>
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700">
-                        Contraseña
-                    </label>
-                    <input 
-                        id="password" 
-                        name="password" 
-                        type="password" 
-                        autocomplete="current-password" 
-                        required 
-                        class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" 
-                        placeholder="Ingresa tu contraseña"
-                        value="superadmin"
-                    >
-                </div>
-            </div>
-
             <div>
-                <button 
-                    type="submit" 
-                    class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
-                >
-                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                        <svg class="h-5 w-5 text-blue-500 group-hover:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
-                        </svg>
-                    </span>
-                    Iniciar Sesión
-                </button>
+                <label for="username" class="block text-sm font-medium text-gray-700">Usuario</label>
+                <input id="username" name="username" type="text" required 
+                       class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" 
+                       value="superadmin">
             </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                <input id="password" name="password" type="password" required 
+                       class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md" 
+                       value="superadmin">
+            </div>
+            <button type="submit" 
+                    class="w-full py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                Iniciar Sesión
+            </button>
         </form>
-
-        <!-- Footer -->
-        <div class="text-center text-xs text-gray-500 mt-6">
-            CMS Dinámico v1.0.0 - Sistema de gestión configurable
-        </div>
     </div>
-
-    <script src="/static/js/main.js"></script>
 </body>
 </html>

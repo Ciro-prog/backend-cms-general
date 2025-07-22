@@ -1,36 +1,25 @@
 # ================================
-# app/routers/__init__.py - CORREGIDO
+# app/frontend/routers/__init__.py - CON DASHBOARD
 # ================================
 
-"""Routers del CMS Dinámico"""
+"""Routers del frontend"""
 
 from fastapi import APIRouter
 
-# Importar sub-routers disponibles
+# Router principal del frontend
+frontend_router = APIRouter()
+
+# Importar routers disponibles
 try:
-    from . import admin
-except ImportError:
-    admin = None
+    from .auth import router as auth_router
+    frontend_router.include_router(auth_router, tags=["frontend-auth"])
+    print("✅ Auth router incluido")
+except Exception as e:
+    print(f"⚠️ Error incluyendo auth router: {e}")
 
 try:
-    from . import business  
-except ImportError:
-    business = None
-
-try:
-    from . import auth
-except ImportError:
-    auth = None
-
-# Router principal de la API
-api_router = APIRouter()
-
-# Incluir routers que estén disponibles
-if admin:
-    api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
-
-if business:
-    api_router.include_router(business.router, prefix="/business", tags=["business"])
-
-if auth:
-    api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+    from .dashboard import router as dashboard_router
+    frontend_router.include_router(dashboard_router, tags=["frontend-dashboard"])
+    print("✅ Dashboard router incluido")
+except Exception as e:
+    print(f"⚠️ Error incluyendo dashboard router: {e}")

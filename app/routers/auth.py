@@ -1,54 +1,72 @@
+# ================================
+# app/routers/auth.py - SIMPLIFICADO
+# ================================
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from typing import Dict, Any
 import logging
 
-from ..auth.dependencies import get_current_user, get_current_business_user
-from ..models.user import User, UserCreate, UserUpdate
-from ..models.responses import BaseResponse
-from ..services.user_service import UserService
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.get("/me", response_model=BaseResponse[User])
-async def get_current_user_info(
-    current_user: User = Depends(get_current_business_user)
-):
-    """Obtener información del usuario actual"""
-    return BaseResponse(data=current_user)
+# Importar funciones de autenticación del frontend
+try:
+    from ..frontend.auth import get_current_user
+except ImportError:
+    # Fallback si no está disponible
+    def get_current_user(request: Request):
+        if hasattr(request, 'session') and "user" in request.session:
+            return request.session["user"]
+        raise HTTPException(status_code=401, detail="No autenticado")
 
-@router.put("/me", response_model=BaseResponse[User])
-async def update_current_user(
-    user_update: UserUpdate,
-    current_user: User = Depends(get_current_business_user)
-):
-    """Actualizar información del usuario actual"""
-    user_service = UserService()
-    updated_user = await user_service.update_user(
-        str(current_user.id), 
-        user_update
-    )
-    return BaseResponse(data=updated_user)
+@router.get("/me")
+async def get_current_user_info(request: Request):
+    """Obtener información del usuario actual"""
+    try:
+        user = get_current_user(request)
+        return {
+            "success": True,
+            "data": user,
+            "message": "Usuario actual obtenido"
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error obteniendo usuario actual: {e}")
+        raise HTTPException(status_code=500, detail="Error interno")
+
+@router.post("/logout")
+async def api_logout(request: Request):
+    """Cerrar sesión via API"""
+    try:
+        if hasattr(request, 'session'):
+            request.session.clear()
+        
+        return {
+            "success": True,
+            "message": "Sesión cerrada exitosamente"
+        }
+    except Exception as e:
+        logger.error(f"Error en logout: {e}")
+        raise HTTPException(status_code=500, detail="Error cerrando sesión")
+
+@router.get("/status")
+async def auth_status(request: Request):
+    """Verificar estado de autenticación"""
+    try:
+        user = get_current_user(request)
+        return {
+            "authenticated": True,
+            "user": user
+        }
+    except:
+        return {
+            "authenticated": False,
+            "user": None
+        }
 
 @router.post("/webhook")
-async def clerk_webhook(request: Request):
-    """Webhook de Clerk para sincronizar usuarios"""
-    try:
-        payload = await request.json()
-        event_type = payload.get("type")
-        
-        user_service = UserService()
-        
-        if event_type == "user.created":
-            await user_service.handle_user_created(payload["data"])
-        elif event_type == "user.updated":
-            await user_service.handle_user_updated(payload["data"])
-        elif event_type == "user.deleted":
-            await user_service.handle_user_deleted(payload["data"])
-        
-        return JSONResponse({"success": True})
-        
-    except Exception as e:
-        logger.error(f"Error procesando webhook de Clerk: {e}")
-        raise HTTPException(status_code=400, detail="Error procesando webhook")
+async def dummy_webhook(request: Request):
+    """Webhook dummy para compatibilidad"""
+    return JSONResponse({"success": True, "message": "Webhook no implementado"})

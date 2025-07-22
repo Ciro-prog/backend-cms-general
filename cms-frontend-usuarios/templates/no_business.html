@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Sin Business Asignado - CMS Dinámico{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div class="max-w-md w-full text-center">
+        <!-- Icono -->
+        <div class="mx-auto h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+            <span class="text-4xl">🏢</span>
+        </div>
+        
+        <!-- Título -->
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">Sin Business Asignado</h1>
+        
+        <!-- Descripción -->
+        <div class="text-gray-600 mb-8 space-y-2">
+            <p>Hola <strong>{{ user.name or user.username }}</strong>,</p>
+            <p>Tu cuenta no tiene un business asignado. Necesitas que un administrador te asigne a una empresa para poder acceder a tu dashboard personalizado.</p>
+        </div>
+        
+        <!-- Info del usuario -->
+        <div class="bg-white rounded-lg border border-gray-200 p-4 mb-8">
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Usuario:</span>
+                    <span class="font-medium">{{ user.username }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Rol:</span>
+                    <span class="font-medium">{{ user.role | replace('_', ' ') | title }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Business ID:</span>
+                    <span class="text-red-600 font-medium">No asignado</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Acciones -->
+        <div class="space-y-4">
+            <!-- Para admins -->
+            {% if user.role in ['admin', 'super_admin'] %}
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p class="text-sm text-blue-800 mb-3">
+                    <strong>Como administrador</strong>, puedes crear businesses o asignarte a uno existente desde el panel de administración.
+                </p>
+                <a href="http://localhost:8000" target="_blank"
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    ⚙️ Ir al Panel Admin
+                </a>
+            </div>
+            {% endif %}
+            
+            <!-- Contactar admin -->
+            <div class="text-sm text-gray-500 mb-6">
+                <p>Contacta a tu administrador para que te asigne a un business:</p>
+                <ul class="mt-2 space-y-1">
+                    <li>📧 admin@tuempresa.com</li>
+                    <li>📞 +54 11 1234-5678</li>
+                </ul>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="flex flex-col space-y-3">
+                <button onclick="window.location.reload()" 
+                        class="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                    🔄 Actualizar Página
+                </button>
+                
+                <a href="/logout" 
+                   class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-center">
+                    🚪 Cerrar Sesión
+                </a>
+            </div>
+        </div>
+        
+        <!-- Info adicional -->
+        <div class="mt-8 text-xs text-gray-400">
+            <p>CMS Dinámico v1.0.0</p>
+            <p class="mt-1">
+                <a href="/health" class="hover:text-gray-600">Health Check</a>
+                •
+                <a href="http://localhost:8000/docs" target="_blank" class="hover:text-gray-600">API Docs</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

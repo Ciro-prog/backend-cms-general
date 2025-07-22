@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CMS Dinámico{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js para interactividad -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* Animaciones */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse-glow {
+            animation: pulseGlow 2s infinite;
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation Bar -->
+    {% if user %}
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <!-- Logo -->
+                    <div class="flex-shrink-0 flex items-center">
+                        <div class="h-8 w-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <span class="text-white font-bold text-sm">C</span>
+                        </div>
+                        <span class="ml-2 text-xl font-semibold text-gray-900">CMS Dinámico</span>
+                    </div>
+                    
+                    <!-- Business Info -->
+                    {% if user.business_id %}
+                    <div class="ml-6 flex items-center">
+                        <div class="h-6 w-6 bg-green-500 rounded-full flex items-center justify-center">
+                            <span class="text-white text-xs">🏢</span>
+                        </div>
+                        <span class="ml-2 text-sm text-gray-600">{{ user.business_id | replace('_', ' ') | title }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- User Menu -->
+                <div class="flex items-center space-x-4" x-data="{ showUserMenu: false }">
+                    <!-- Notifications -->
+                    <button class="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5-5V9.586a2 2 0 0 0-.586-1.414L12 6l-2.414 2.172A2 2 0 0 0 9 9.586V12l-5 5h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"></path>
+                        </svg>
+                        <span class="sr-only">Notificaciones</span>
+                    </button>
+                    
+                    <!-- User Dropdown -->
+                    <div class="relative">
+                        <button @click="showUserMenu = !showUserMenu" 
+                                class="flex items-center space-x-2 text-sm text-gray-700 hover:text-gray-900 focus:outline-none">
+                            <div class="h-8 w-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                                <span class="text-white font-semibold text-xs">{{ user.name[0] if user.name else user.username[0] }}</span>
+                            </div>
+                            <span class="hidden md:block">{{ user.name or user.username }}</span>
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <!-- Dropdown Menu -->
+                        <div x-show="showUserMenu" 
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             @click.away="showUserMenu = false"
+                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50">
+                            
+                            <div class="px-4 py-2 text-sm text-gray-500 border-b">
+                                <div class="font-medium">{{ user.name or user.username }}</div>
+                                <div class="text-xs">{{ user.role | replace('_', ' ') | title }}</div>
+                            </div>
+                            
+                            <a href="/dashboard" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                🏠 Dashboard
+                            </a>
+                            
+                            {% if user.role in ['admin', 'super_admin'] %}
+                            <a href="http://localhost:8000" target="_blank" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                ⚙️ Panel Admin
+                            </a>
+                            {% endif %}
+                            
+                            <div class="border-t">
+                                <a href="/logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                    🚪 Cerrar Sesión
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- Main Content -->
+    <main class="{% if user %}pt-4{% endif %}">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- JavaScript Utilities -->
+    <script>
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            const bgColor = {
+                'success': 'bg-green-500',
+                'error': 'bg-red-500',
+                'warning': 'bg-yellow-500',
+                'info': 'bg-blue-500'
+            }[type] || 'bg-blue-500';
+            
+            toast.className = `${bgColor} text-white px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300`;
+            toast.textContent = message;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Format numbers
+        function formatNumber(num) {
+            return new Intl.NumberFormat('es-AR').format(num);
+        }
+        
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS'
+            }).format(amount);
+        }
+        
+        // Format date
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('es-AR');
+        }
+        
+        // API Helper
+        async function apiRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                showToast('Error en la conexión con el servidor', 'error');
+                throw error;
+            }
+        }
+    </script>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

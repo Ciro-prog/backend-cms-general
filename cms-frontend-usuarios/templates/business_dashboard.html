@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+
+{% block title %}{{ business.nombre or business_id }} - Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="businessDashboard()">
+    <!-- Header del Business -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <div class="h-12 w-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center">
+                    <span class="text-white font-bold text-lg">
+                        {{ business.nombre[0] if business.nombre else business_id[0] }}
+                    </span>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">
+                        {{ business.nombre or business_id | replace('_', ' ') | title }}
+                    </h1>
+                    <p class="text-gray-600">
+                        {{ business.tipo_base | replace('_', ' ') | title }} • 
+                        Usuario: {{ user.name or user.username }} ({{ user.role | replace('_', ' ') | title }})
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Acciones rápidas -->
+            <div class="flex space-x-3">
+                <button @click="refreshData()" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    🔄 Actualizar
+                </button>
+                {% if user.role in ['admin', 'super_admin'] %}
+                <a href="http://localhost:8000" target="_blank"
+                   class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    ⚙️ Configurar
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Clientes -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Total Clientes</p>
+                    <p class="text-2xl font-bold text-gray-900" x-text="formatNumber(stats.total_clientes)">
+                        {{ clientes | length }}
+                    </p>
+                </div>
+                <div class="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">👥</span>
+                </div>
+            </div>
+            <div class="mt-2 flex items-center text-sm text-green-600">
+                <span>+12%</span>
+                <span class="ml-1 text-gray-500">vs mes anterior</span>
+            </div>
+        </div>
+
+        <!-- Clientes Activos -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Activos</p>
+                    <p class="text-2xl font-bold text-green-600" x-text="formatNumber(stats.clientes_activos)">
+                        {{ clientes | selectattr('activo', 'equalto', true) | list | length }}
+                    </p>
+                </div>
+                <div class="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">✅</span>
+                </div>
+            </div>
+            <div class="mt-2 flex items-center text-sm text-green-600">
+                <span>94.2%</span>
+                <span class="ml-1 text-gray-500">tasa actividad</span>
+            </div>
+        </div>
+
+        <!-- Nuevos del Mes -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Nuevos del Mes</p>
+                    <p class="text-2xl font-bold text-purple-600" x-text="formatNumber(stats.nuevos_mes)">
+                        23
+                    </p>
+                </div>
+                <div class="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">🆕</span>
+                </div>
+            </div>
+            <div class="mt-2 flex items-center text-sm text-purple-600">
+                <span>+8</span>
+                <span class="ml-1 text-gray-500">esta semana</span>
+            </div>
+        </div>
+
+        <!-- WhatsApp -->
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">WhatsApp</p>
+                    <p class="text-2xl font-bold text-green-600">Activo</p>
+                </div>
+                <div class="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span class="text-2xl">📱</span>
+                </div>
+            </div>
+            <div class="mt-2 flex items-center text-sm text-green-600">
+                <span class="h-2 w-2 bg-green-500 rounded-full mr-2"></span>
+                <span class="text-gray-500">3 sesiones conectadas</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Tabla de Clientes -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-gray-900">👥 Clientes Recientes</h2>
+                        <button @click="loadAllClientes()" 
+                                class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                            Ver todos →
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <template x-for="cliente in clientes.slice(0, 8)" :key="cliente.id">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="h-8 w-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                                                <span class="text-white text-xs font-semibold" x-text="cliente.nombre ? cliente.nombre[0] : '?'"></span>
+                                            </div>
+                                            <div class="ml-3">
+                                                <div class="text-sm font-medium text-gray-900" x-text="cliente.nombre || 'Sin nombre'"></div>
+                                                <div class="text-sm text-gray-500" x-text="cliente.email || ''"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="cliente.telefono || '-'"></td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="cliente.plan || 'Sin plan'"></td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span :class="cliente.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
+                                              class="inline-flex px-2 text-xs font-semibold rounded-full">
+                                            <span x-text="cliente.activo ? 'Activo' : 'Inactivo'"></span>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <button @click="viewClient(cliente)" 
+                                                class="text-blue-600 hover:text-blue-900 mr-3">Ver</button>
+                                        {% if user.role in ['admin', 'tecnico'] %}
+                                        <button @click="editClient(cliente)" 
+                                                class="text-green-600 hover:text-green-900">Editar</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Datos demo si no hay clientes -->
+                    {% if not clientes %}
+                    <div class="text-center py-12">
+                        <div class="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl">👥</span>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No hay clientes aún</h3>
+                        <p class="text-gray-500 mb-4">Los clientes aparecerán aquí cuando estén configuradas las APIs externas</p>
+                        <div class="text-sm text-gray-400">
+                            <p>💡 Datos demo disponibles cuando se conecte ISPCube API</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Lateral -->
+        <div class="space-y-6">
+            <!-- WhatsApp Business -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">📱 WhatsApp</h3>
+                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Conectado</span>
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Mensajes hoy:</span>
+                        <span class="font-semibold">47</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Sin responder:</span>
+                        <span class="font-semibold text-orange-600">3</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Sesiones activas:</span>
+                        <span class="font-semibold text-green-600">3</span>
+                    </div>
+                </div>
+                
+                <button class="w-full mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    💬 Abrir Chat
+                </button>
+            </div>
+
+            <!-- N8N Workflows -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">🔄 Workflows</h3>
+                    <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">N8N</span>
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Workflows activos:</span>
+                        <span class="font-semibold">12</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Ejecutados hoy:</span>
+                        <span class="font-semibold">89</span>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Últimos errores:</span>
+                        <span class="font-semibold text-green-600">0</span>
+                    </div>
+                </div>
+                
+                <button class="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    ⚙️ Ver Workflows
+                </button>
+            </div>
+
+            <!-- Gráfico de Crecimiento -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">📈 Crecimiento</h3>
+                <canvas id="growthChart" width="300" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function businessDashboard() {
+    return {
+        stats: {
+            total_clientes: {{ clientes | length }},
+            clientes_activos: {{ clientes | selectattr('activo', 'equalto', true) | list | length }},
+            nuevos_mes: 23
+        },
+        clientes: {{ clientes | tojson | safe }},
+        
+        async refreshData() {
+            try {
+                showToast('Actualizando datos...', 'info');
+                const data = await apiRequest('/api/business/{{ business_id }}/stats');
+                this.stats = data;
+                showToast('Datos actualizados', 'success');
+            } catch (error) {
+                showToast('Error actualizando datos', 'error');
+            }
+        },
+        
+        async loadAllClientes() {
+            try {
+                const data = await apiRequest('/api/business/{{ business_id }}/clientes');
+                this.clientes = data;
+                showToast(`Cargados ${data.length} clientes`, 'success');
+            } catch (error) {
+                showToast('Error cargando clientes', 'error');
+            }
+        },
+        
+        viewClient(cliente) {
+            showToast(`Viendo cliente: ${cliente.nombre}`, 'info');
+            // TODO: Abrir modal o página de detalle
+        },
+        
+        editClient(cliente) {
+            showToast(`Editando cliente: ${cliente.nombre}`, 'info');
+            // TODO: Abrir modal de edición
+        },
+        
+        formatNumber(num) {
+            return new Intl.NumberFormat('es-AR').format(num);
+        }
+    }
+}
+
+// Inicializar gráfico cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('growthChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Nuevos Clientes',
+                    data: [12, 19, 3, 5, 2, 3],
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

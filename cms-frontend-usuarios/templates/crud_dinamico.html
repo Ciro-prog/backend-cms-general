@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Dinámico - Demo Funcional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        secondary: '#059669'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50" x-data="crudApp()">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-gray-900">
+                        <i class="fas fa-database text-primary mr-2"></i>
+                        CRUD Dinámico
+                    </h1>
+                    <div class="hidden md:flex items-center space-x-2">
+                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                            TelcoNorte ISP
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Entity Selector -->
+                <div class="flex items-center space-x-4">
+                    <select x-model="currentEntity" @change="loadEntityConfig()" 
+                            class="bg-white border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="">Seleccionar Entidad</option>
+                        <template x-for="entityName in availableEntities" :key="entityName">
+                            <option :value="entityName" x-text="entityConfigs[entityName]?.titulo || entityName"></option>
+                        </template>
+                    </select>
+                    
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-600">Admin</span>
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Loading State -->
+        <div x-show="loading" class="flex justify-center items-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+
+        <!-- Entity Not Selected -->
+        <div x-show="!currentEntity && !loading" class="text-center py-12">
+            <i class="fas fa-table text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">Selecciona una Entidad</h3>
+            <p class="text-gray-600">Elige una entidad del selector para ver su CRUD dinámico</p>
+        </div>
+
+        <!-- CRUD Interface -->
+        <div x-show="currentEntity && !loading">
+            
+            <!-- Entity Header -->
+            <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="mb-4 md:mb-0">
+                        <h2 class="text-2xl font-bold text-gray-900" x-text="entityConfig.titulo"></h2>
+                        <p class="text-gray-600" x-text="entityConfig.descripcion"></p>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="flex flex-wrap gap-3">
+                        <button @click="showCreateModal = true" 
+                                x-show="entityConfig.permisos.crear"
+                                class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                            <i class="fas fa-plus"></i>
+                            <span>Nuevo</span>
+                        </button>
+                        
+                        <button @click="exportData()" 
+                                x-show="entityConfig.permisos.exportar"
+                                class="bg-secondary text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
+                            <i class="fas fa-download"></i>
+                            <span>Exportar</span>
+                        </button>
+                        
+                        <button @click="refreshData()"
+                                class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
+                            <i class="fas fa-refresh"></i>
+                            <span>Actualizar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="bg-white rounded-lg shadow-sm border p-4 mb-6">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <!-- Search -->
+                    <div class="flex-1">
+                        <div class="relative">
+                            <input type="text" x-model="searchTerm" @input="applyFilters()"
+                                   placeholder="Buscar en todos los campos..."
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Dynamic Filters -->
+                    <div class="flex flex-wrap gap-3">
+                        <template x-for="campo in entityConfig.campos_filtros" :key="campo.campo">
+                            <div class="min-w-40">
+                                <select x-model="filters[campo.campo]" @change="applyFilters()"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
+                                    <option value="">Todos los <span x-text="campo.nombre"></span></option>
+                                    <template x-for="opcion in campo.opciones" :key="opcion.valor">
+                                        <option :value="opcion.valor" x-text="opcion.label"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+                
+                <!-- Table Header -->
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-gray-600">
+                            Mostrando <span x-text="((currentPage - 1) * perPage) + 1"></span> - 
+                            <span x-text="Math.min(currentPage * perPage, totalItems)"></span> de 
+                            <span x-text="totalItems"></span> registros
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-gray-600">Mostrar:</span>
+                            <select x-model="perPage" @change="loadData()"
+                                    class="border border-gray-300 rounded px-3 py-1 text-sm focus:ring-2 focus:ring-primary">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <template x-for="campo in entityConfig.campos_tabla" :key="campo.campo">
+                                    <th @click="sortBy(campo.campo)"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                                        <div class="flex items-center space-x-1">
+                                            <span x-text="campo.nombre"></span>
+                                            <div class="flex flex-col">
+                                                <i class="fas fa-caret-up text-xs" 
+                                                   :class="{'text-primary': sortField === campo.campo && sortOrder === 'asc'}"></i>
+                                                <i class="fas fa-caret-down text-xs -mt-1" 
+                                                   :class="{'text-primary': sortField === campo.campo && sortOrder === 'desc'}"></i>
+                                            </div>
+                                        </div>
+                                    </th>
+                                </template>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <template x-for="item in paginatedData" :key="item.id">
+                                <tr class="hover:bg-gray-50">
+                                    <template x-for="campo in entityConfig.campos_tabla" :key="campo.campo">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <div x-html="formatField(item[campo.campo], campo)"></div>
+                                        </td>
+                                    </template>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div class="flex justify-end space-x-2">
+                                            <button @click="viewItem(item)" 
+                                                    class="text-primary hover:text-blue-700">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button @click="editItem(item)" 
+                                                    x-show="entityConfig.permisos.editar"
+                                                    class="text-secondary hover:text-green-700">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button @click="deleteItem(item)" 
+                                                    x-show="entityConfig.permisos.eliminar"
+                                                    class="text-red-600 hover:text-red-700">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div x-show="paginatedData.length === 0" class="text-center py-12">
+                    <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">No hay datos</h3>
+                    <p class="text-gray-600">No se encontraron registros con los filtros aplicados</p>
+                </div>
+
+                <!-- Pagination -->
+                <div x-show="totalPages > 1" class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-600">
+                            Página <span x-text="currentPage"></span> de <span x-text="totalPages"></span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button @click="goToPage(1)" :disabled="currentPage === 1"
+                                    class="px-3 py-2 text-sm border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-angle-double-left"></i>
+                            </button>
+                            <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
+                                    class="px-3 py-2 text-sm border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-angle-left"></i>
+                            </button>
+                            
+                            <template x-for="page in visiblePages" :key="page">
+                                <button @click="goToPage(page)" 
+                                        :class="{'bg-primary text-white': page === currentPage, 'hover:bg-gray-100': page !== currentPage}"
+                                        class="px-3 py-2 text-sm border rounded">
+                                    <span x-text="page"></span>
+                                </button>
+                            </template>
+                            
+                            <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages"
+                                    class="px-3 py-2 text-sm border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-angle-right"></i>
+                            </button>
+                            <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages"
+                                    class="px-3 py-2 text-sm border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-angle-double-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create/Edit Modal -->
+    <div x-show="showCreateModal || showEditModal" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        <span x-show="showCreateModal">Crear</span>
+                        <span x-show="showEditModal">Editar</span>
+                        <span x-text="entityConfig.titulo_singular"></span>
+                    </h3>
+                    <button @click="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <form @submit.prevent="saveItem()">
+                <div class="px-6 py-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <template x-for="campo in entityConfig.campos_form" :key="campo.campo">
+                            <div :class="{'md:col-span-2': campo.ancho === 'completo'}">
+                                <label :for="campo.campo" class="block text-sm font-medium text-gray-700 mb-1">
+                                    <span x-text="campo.nombre"></span>
+                                    <span x-show="campo.obligatorio" class="text-red-500">*</span>
+                                </label>
+                                
+                                <!-- Text Input -->
+                                <template x-if="campo.tipo === 'text' || campo.tipo === 'email' || campo.tipo === 'phone'">
+                                    <input :type="campo.tipo === 'email' ? 'email' : campo.tipo === 'phone' ? 'tel' : 'text'"
+                                           :id="campo.campo"
+                                           x-model="formData[campo.campo]"
+                                           :placeholder="campo.placeholder"
+                                           :required="campo.obligatorio"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </template>
+                                
+                                <!-- Number Input -->
+                                <template x-if="campo.tipo === 'number'">
+                                    <input type="number"
+                                           :id="campo.campo"
+                                           x-model="formData[campo.campo]"
+                                           :placeholder="campo.placeholder"
+                                           :required="campo.obligatorio"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </template>
+                                
+                                <!-- Select -->
+                                <template x-if="campo.tipo === 'select'">
+                                    <select :id="campo.campo"
+                                            x-model="formData[campo.campo]"
+                                            :required="campo.obligatorio"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="">Seleccionar...</option>
+                                        <template x-for="opcion in campo.opciones" :key="opcion.valor">
+                                            <option :value="opcion.valor" x-text="opcion.label"></option>
+                                        </template>
+                                    </select>
+                                </template>
+                                
+                                <!-- Date -->
+                                <template x-if="campo.tipo === 'date'">
+                                    <input type="date"
+                                           :id="campo.campo"
+                                           x-model="formData[campo.campo]"
+                                           :required="campo.obligatorio"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </template>
+                                
+                                <!-- Textarea -->
+                                <template x-if="campo.tipo === 'textarea'">
+                                    <textarea :id="campo.campo"
+                                              x-model="formData[campo.campo]"
+                                              :placeholder="campo.placeholder"
+                                              :required="campo.obligatorio"
+                                              rows="3"
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
+                                </template>
+                                
+                                <!-- Boolean/Checkbox -->
+                                <template x-if="campo.tipo === 'boolean'">
+                                    <div class="flex items-center">
+                                        <input type="checkbox"
+                                               :id="campo.campo"
+                                               x-model="formData[campo.campo]"
+                                               class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        <label :for="campo.campo" class="ml-2 text-sm text-gray-900" x-text="campo.descripcion"></label>
+                                    </div>
+                                </template>
+                                
+                                <p x-show="campo.descripcion && campo.tipo !== 'boolean'" 
+                                   class="text-xs text-gray-500 mt-1" x-text="campo.descripcion"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button type="button" @click="closeModal()" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" :disabled="saving"
+                            class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span x-show="!saving">
+                            <span x-show="showCreateModal">Crear</span>
+                            <span x-show="showEditModal">Guardar Cambios</span>
+                        </span>
+                        <span x-show="saving">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                            Guardando...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div x-show="toast.show" 
+         x-transition:enter="transition ease-out duration-300 transform"
+         x-transition:enter-start="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+         x-transition:enter-end="translate-y-0 opacity-100 sm:translate-x-0"
+         x-transition:leave="transition ease-in duration-100"
+         x-transition:leave-start="translate-y-0 opacity-100 sm:translate-x-0"
+         x-transition:leave-end="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+         class="fixed top-4 right-4 z-50">
+        <div :class="{
+            'bg-green-500': toast.type === 'success',
+            'bg-red-500': toast.type === 'error',
+            'bg-blue-500': toast.type === 'info',
+            'bg-yellow-500': toast.type === 'warning'
+         }" class="rounded-lg px-4 py-3 text-white shadow-lg max-w-sm">
+            <div class="flex items-center">
+                <i :class="{
+                    'fas fa-check-circle': toast.type === 'success',
+                    'fas fa-exclamation-circle': toast.type === 'error',
+                    'fas fa-info-circle': toast.type === 'info',
+                    'fas fa-exclamation-triangle': toast.type === 'warning'
+                }" class="mr-3"></i>
+                <span x-text="toast.message"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function crudApp() {
+            return {
+                // State
+                currentEntity: '',
+                entityConfig: {},
+                data: [],
+                filteredData: [],
+                paginatedData: [],
+                loading: false,
+                saving: false,
+                
+                // Pagination
+                currentPage: 1,
+                perPage: 10,
+                totalItems: 0,
+                totalPages: 0,
+                visiblePages: [],
+                
+                // Filters and Search
+                searchTerm: '',
+                filters: {},
+                sortField: '',
+                sortOrder: 'asc',
+                
+                // Modals
+                showCreateModal: false,
+                showEditModal: false,
+                formData: {},
+                editingItem: null,
+                
+                // Toast
+                toast: {
+                    show: false,
+                    message: '',
+                    type: 'info'
+                },
+                
+                // Configuraciones dinámicas - cargadas desde el backend
+                entityConfigs: {},
+                businessId: "{{ business_id or 'isp_telconorte' }}", // Desde el template
+                
+                // APIs disponibles - se cargan dinámicamente
+                availableEntities: [],
+                
+                init() {
+                    // Cargar configuraciones al inicializar
+                    this.loadEntitiesConfig();
+                    
+                    // Detectar entidad preseleccionada de la URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const entityParam = urlParams.get('entity');
+                    if (entityParam) {
+                        // Esperar a que se carguen las configuraciones
+                        setTimeout(() => {
+                            if (this.entityConfigs[entityParam]) {
+                                this.currentEntity = entityParam;
+                                this.loadEntityConfig();
+                            }
+                        }, 1000);
+                    }
+                },
+                
+                async loadEntitiesConfig() {
+                    console.log('🔄 Cargando configuraciones de entidades...');
+                    this.loading = true;
+                    
+                    try {
+                        const url = `/api/crud/${this.businessId}/entities`;
+                        console.log('📡 Llamando a:', url);
+                        
+                        const response = await fetch(url);
+                        console.log('📥 Response status:', response.status);
+                        
+                        const data = await response.json();
+                        console.log('📄 Response data:', data);
+                        
+                        if (data.success && data.data) {
+                            this.entityConfigs = data.data;
+                            this.availableEntities = Object.keys(this.entityConfigs);
+                            console.log('✅ Entidades cargadas:', this.availableEntities);
+                            this.showToast(`Configuraciones cargadas: ${this.availableEntities.length} entidades`, 'success');
+                        } else {
+                            console.error('❌ Error en respuesta:', data.error);
+                            this.showToast(data.error || 'Error cargando configuraciones', 'error');
+                            
+                            // Fallback: crear una entidad de prueba
+                            this.entityConfigs = {
+                                'clientes': {
+                                    titulo: 'Gestión de Clientes (Demo)',
+                                    titulo_singular: 'Cliente',
+                                    descripcion: 'Datos de prueba mientras se configura el backend',
+                                    permisos: { crear: true, editar: true, eliminar: true, exportar: true },
+                                    campos_tabla: [
+                                        { campo: 'id', nombre: 'ID', tipo: 'number' },
+                                        { campo: 'nombre', nombre: 'Nombre', tipo: 'text' },
+                                        { campo: 'email', nombre: 'Email', tipo: 'email' }
+                                    ],
+                                    campos_form: [
+                                        { campo: 'nombre', nombre: 'Nombre', tipo: 'text', obligatorio: true },
+                                        { campo: 'email', nombre: 'Email', tipo: 'email', obligatorio: true }
+                                    ],
+                                    campos_filtros: []
+                                }
+                            };
+                            this.availableEntities = Object.keys(this.entityConfigs);
+                            this.showToast('Usando configuración de prueba', 'warning');
+                        }
+                    } catch (error) {
+                        console.error('💥 Error de conexión:', error);
+                        this.showToast('Error de conexión: ' + error.message, 'error');
+                        
+                        // Fallback igual que arriba
+                        this.entityConfigs = {
+                            'clientes': {
+                                titulo: 'Gestión de Clientes (Offline)',
+                                titulo_singular: 'Cliente', 
+                                descripcion: 'Modo offline - verificar conexión backend',
+                                permisos: { crear: false, editar: false, eliminar: false, exportar: false },
+                                campos_tabla: [
+                                    { campo: 'id', nombre: 'ID', tipo: 'number' },
+                                    { campo: 'nombre', nombre: 'Nombre', tipo: 'text' }
+                                ],
+                                campos_form: [],
+                                campos_filtros: []
+                            }
+                        };
+                        this.availableEntities = Object.keys(this.entityConfigs);
+                    }
+                    
+                    this.loading = false;
+                },
+                
+                async loadEntityConfig() {
+                    if (!this.currentEntity) return;
+                    
+                    this.loading = true;
+                    this.resetState();
+                    
+                    // La configuración ya está cargada en this.entityConfigs
+                    this.entityConfig = this.entityConfigs[this.currentEntity] || {};
+                    
+                    // Cargar datos reales de la API
+                    await this.loadDataFromAPI();
+                    
+                    this.calculatePagination();
+                    this.updatePaginatedData();
+                    
+                    this.loading = false;
+                },
+                
+                async loadDataFromAPI() {
+                    console.log(`🔄 Cargando datos de ${this.currentEntity}...`);
+                    
+                    try {
+                        const params = new URLSearchParams({
+                            page: this.currentPage.toString(),
+                            per_page: this.perPage.toString(),
+                            sort_order: this.sortOrder
+                        });
+                        
+                        if (this.sortField) {
+                            params.append('sort_by', this.sortField);
+                        }
+                        
+                        if (this.searchTerm || Object.keys(this.filters).length > 0) {
+                            const filterParams = [];
+                            
+                            if (this.searchTerm) {
+                                filterParams.push(`search=${encodeURIComponent(this.searchTerm)}`);
+                            }
+                            
+                            Object.keys(this.filters).forEach(key => {
+                                if (this.filters[key]) {
+                                    filterParams.push(`${key}=${encodeURIComponent(this.filters[key])}`);
+                                }
+                            });
+                            
+                            if (filterParams.length > 0) {
+                                params.append('filters', filterParams.join('&'));
+                            }
+                        }
+                        
+                        const url = `/api/crud/${this.businessId}/${this.currentEntity}?${params}`;
+                        console.log('📡 URL:', url);
+                        
+                        const response = await fetch(url);
+                        console.log('📥 Status:', response.status);
+                        
+                        const result = await response.json();
+                        console.log('📄 Result:', result);
+                        
+                        if (result.success !== false && result.data) {
+                            this.data = result.data.items || result.data || [];
+                            this.totalItems = result.data.total || this.data.length;
+                            this.filteredData = [...this.data];
+                            console.log(`✅ ${this.data.length} registros cargados`);
+                            this.showToast(`Cargados ${this.data.length} registros desde API`, 'success');
+                        } else {
+                            console.warn('⚠️ Sin datos reales, usando mock data');
+                            // Datos mock como fallback
+                            this.data = this.getMockData();
+                            this.totalItems = this.data.length;
+                            this.filteredData = [...this.data];
+                            this.showToast(`Usando datos de prueba (${this.data.length} registros)`, 'warning');
+                        }
+                    } catch (error) {
+                        console.error('💥 Error cargando de API:', error);
+                        this.showToast('Error de conexión, usando datos offline', 'error');
+                        
+                        // Usar datos mock como fallback
+                        this.data = this.getMockData();
+                        this.totalItems = this.data.length;
+                        this.filteredData = [...this.data];
+                    }
+                },
+                
+                getMockData() {
+                    // Datos mock según la entidad
+                    const mockDataSets = {
+                        clientes: [
+                            { id: 1, nombre: 'Juan Pérez (Mock)', email: 'juan@demo.com', telefono: '+54 11 1234-5678', plan: 'premium', estado: 'activo', fecha_alta: '2024-01-15', activo: true },
+                            { id: 2, nombre: 'María García (Mock)', email: 'maria@demo.com', telefono: '+54 11 8765-4321', plan: 'basico', estado: 'activo', fecha_alta: '2024-02-20', activo: true },
+                            { id: 3, nombre: 'Carlos López (Mock)', email: 'carlos@demo.com', telefono: '+54 11 5555-0000', plan: 'medio', estado: 'suspendido', fecha_alta: '2024-01-10', activo: false }
+                        ],
+                        tickets: [
+                            { id: 1, titulo: 'Problema de conexión', estado: 'abierto', prioridad: 'alta', cliente: 'Juan Pérez', fecha_creacion: '2024-01-20' },
+                            { id: 2, titulo: 'Consulta sobre facturación', estado: 'cerrado', prioridad: 'media', cliente: 'María García', fecha_creacion: '2024-01-18' }
+                        ]
+                    };
+                    
+                    return mockDataSets[this.currentEntity] || [];
+                },
+                
+                resetState() {
+                    this.data = [];
+                    this.filteredData = [];
+                    this.paginatedData = [];
+                    this.currentPage = 1;
+                    this.searchTerm = '';
+                    this.filters = {};
+                    this.sortField = '';
+                    this.sortOrder = 'asc';
+                },
+                
+                async applyFilters() {
+                    // Con APIs reales, los filtros se aplican en el servidor
+                    this.currentPage = 1;
+                    await this.loadDataFromAPI();
+                    this.calculatePagination();
+                    this.updatePaginatedData();
+                },
+                
+                async sortBy(field) {
+                    if (this.sortField === field) {
+                        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        this.sortField = field;
+                        this.sortOrder = 'asc';
+                    }
+                    
+                    // Recargar con nuevo ordenamiento
+                    await this.loadDataFromAPI();
+                    this.updatePaginatedData();
+                },
+                
+                async goToPage(page) {
+                    if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
+                        this.currentPage = page;
+                        await this.loadDataFromAPI();
+                        this.calculatePagination();
+                        this.updatePaginatedData();
+                    }
+                },
+                
+                async loadData() {
+                    await this.loadDataFromAPI();
+                },
+                
+                async refreshData() {
+                    this.showToast('Actualizando datos...', 'info');
+                    await this.loadDataFromAPI();
+                },
+                
+                calculatePagination() {
+                    // Con APIs reales, el total viene del servidor
+                    this.totalPages = Math.ceil(this.totalItems / this.perPage);
+                    
+                    // Calcular páginas visibles
+                    this.visiblePages = [];
+                    const startPage = Math.max(1, this.currentPage - 2);
+                    const endPage = Math.min(this.totalPages, this.currentPage + 2);
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                        this.visiblePages.push(i);
+                    }
+                },
+                
+                updatePaginatedData() {
+                    // Con APIs reales, los datos ya vienen paginados del servidor
+                    this.paginatedData = [...this.filteredData];
+                },
+                
+
+                
+                formatField(value, campo) {
+                    if (value === null || value === undefined) return '';
+                    
+                    switch (campo.tipo) {
+                        case 'currency':
+                            return `$${Number(value).toLocaleString('es-AR')}`;
+                        case 'boolean':
+                            return value ? '<span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Sí</span>' : '<span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">No</span>';
+                        case 'select':
+                            const option = campo.opciones?.find(opt => opt.valor === value);
+                            return option ? `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">${option.label}</span>` : value;
+                        case 'date':
+                            return new Date(value).toLocaleDateString('es-AR');
+                        default:
+                            return String(value);
+                    }
+                },
+                
+                // CRUD Operations
+                viewItem(item) {
+                    this.showToast(`Viendo: ${item.nombre || item.id}`, 'info');
+                },
+                
+                editItem(item) {
+                    this.editingItem = item;
+                    this.formData = { ...item };
+                    this.showEditModal = true;
+                },
+                
+
+                
+                async saveItem() {
+                    this.saving = true;
+                    
+                    try {
+                        let response;
+                        
+                        if (this.showCreateModal) {
+                            // Crear nuevo item
+                            response = await fetch(`/api/crud/${this.businessId}/${this.currentEntity}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(this.formData)
+                            });
+                        } else {
+                            // Editar item existente
+                            response = await fetch(`/api/crud/${this.businessId}/${this.currentEntity}/${this.editingItem.id}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(this.formData)
+                            });
+                        }
+                        
+                        const result = await response.json();
+                        
+                        if (result.success !== false) {
+                            this.showToast(
+                                this.showCreateModal ? 'Registro creado correctamente' : 'Registro actualizado correctamente', 
+                                'success'
+                            );
+                            
+                            // Recargar datos
+                            await this.loadDataFromAPI();
+                            this.applyFilters();
+                            this.closeModal();
+                        } else {
+                            this.showToast(result.error || 'Error guardando el registro', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error saving item:', error);
+                        this.showToast('Error de conexión al guardar', 'error');
+                    }
+                    
+                    this.saving = false;
+                },
+                
+                async deleteItem(item) {
+                    if (confirm(`¿Estás seguro de eliminar: ${item.nombre || item.id}?`)) {
+                        try {
+                            const response = await fetch(`/api/crud/${this.businessId}/${this.currentEntity}/${item.id}`, {
+                                method: 'DELETE'
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success !== false) {
+                                this.showToast('Registro eliminado correctamente', 'success');
+                                await this.loadDataFromAPI();
+                                this.applyFilters();
+                            } else {
+                                this.showToast(result.error || 'Error eliminando el registro', 'error');
+                            }
+                        } catch (error) {
+                            console.error('Error deleting item:', error);
+                            this.showToast('Error de conexión al eliminar', 'error');
+                        }
+                    }
+                },
+                
+                closeModal() {
+                    this.showCreateModal = false;
+                    this.showEditModal = false;
+                    this.formData = {};
+                    this.editingItem = null;
+                },
+                
+
+                
+                async exportData() {
+                    try {
+                        // Obtener todos los datos para exportar (sin paginación)
+                        const params = new URLSearchParams({
+                            page: '1',
+                            per_page: '1000', // Obtener muchos registros para export
+                            sort_order: this.sortOrder
+                        });
+                        
+                        if (this.sortField) {
+                            params.append('sort_by', this.sortField);
+                        }
+                        
+                        const response = await fetch(`/api/crud/${this.businessId}/${this.currentEntity}?${params}`);
+                        const result = await response.json();
+                        
+                        const exportData = result.data?.items || result.data || [];
+                        
+                        if (exportData.length > 0) {
+                            const csvContent = this.generateCSV(exportData);
+                            this.downloadCSV(csvContent, `${this.currentEntity}_export.csv`);
+                            this.showToast('Datos exportados correctamente', 'success');
+                        } else {
+                            this.showToast('No hay datos para exportar', 'warning');
+                        }
+                    } catch (error) {
+                        console.error('Error exporting data:', error);
+                        this.showToast('Error exportando datos', 'error');
+                    }
+                },
+                
+                generateCSV(data) {
+                    if (!data.length) return '';
+                    
+                    const headers = this.entityConfig.campos_tabla.map(c => c.nombre);
+                    const rows = data.map(item => 
+                        this.entityConfig.campos_tabla.map(c => item[c.campo] || '')
+                    );
+                    
+                    return [headers, ...rows].map(row => row.join(',')).join('\n');
+                },
+                
+                downloadCSV(content, filename) {
+                    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', filename);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                
+                showToast(message, type = 'info') {
+                    this.toast = { show: true, message, type };
+                    setTimeout(() => {
+                        this.toast.show = false;
+                    }, 3000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

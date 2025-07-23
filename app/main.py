@@ -1,35 +1,47 @@
 # ================================
-# app/main.py (CORREGIDO - SIN IMPORTACIONES CIRCULARES)
-# ================================
+# app/main.py - IMPORTS LIMPIOS Y ORDENADOS
+# ================================ 
 
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
-from contextlib import asynccontextmanager
-from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+# Standard Library
+import json
 import logging
-import time
 import os
+import time
+from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+
+# Third-party
 import httpx
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# FastAPI
+from fastapi import FastAPI, Request, HTTPException, Depends, Query, Body
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+# Starlette
+from starlette.middleware.sessions import SessionMiddleware
+
+# Pydantic
+from pydantic import BaseModel, Field
+
+# Cargar variables de entorno primero
 load_dotenv()
 
-# Imports locales (sin frontend por ahora para evitar circulares)
-from .database import connect_to_mongo, close_mongo_connection, get_database
+# Local imports (comentados para evitar importaciones circulares - se importarán donde sea necesario)
+from .database import get_database, connect_to_mongo, close_mongo_connection
+# from .models.user import User
 from .config import settings
 
-# Configurar logging
+# Configurar logging básico
 logging.basicConfig(
-    level=getattr(logging, settings.log_level),
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
 # ================================
 # MODELOS PYDANTIC
 # ================================
@@ -1300,4 +1312,306 @@ async def delete_entity_config(business_id: str, entidad: str):
     except Exception as e:
         logger.error(f"Error eliminando entidad: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    # AGREGAR AL FINAL DE app/main.py (backend principal)
 
+@app.get("/api/admin/entities/{business_id}")
+async def get_entities_config_simple(business_id: str):
+    """Endpoint simple para obtener configuraciones de entidades"""
+    try:
+        db = get_database()
+        
+        # Obtener todas las entidades configuradas para el business
+        entities = await db.entities_config.find(
+            {"business_id": business_id, "activa": True}
+        ).to_list(None)
+        
+        return {"success": True, "data": entities}
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo entidades: {e}")
+        return {"success": False, "error": str(e), "data": []}
+# ================================
+# ENDPOINTS CRUD SIMPLIFICADOS - AGREGAR AL FINAL DE app/main.py
+# ================================
+
+@app.get("/api/admin/entities/{business_id}")
+async def get_entities_simple(business_id: str):
+    """Endpoint simple para obtener configuraciones de entidades"""
+    try:
+        logger.info(f"🔍 Solicitando entidades para: {business_id}")
+        
+        # Datos mock mientras se configura MongoDB
+        mock_entities = [
+            {
+                "business_id": business_id,
+                "entidad": "clientes",
+                "descripcion": "Gestión de clientes",
+                "configuracion": {
+                    "campos": [
+                        {
+                            "campo": "id",
+                            "nombre": "ID",
+                            "tipo": "number",
+                            "mostrar_en_tabla": True
+                        },
+                        {
+                            "campo": "nombre",
+                            "nombre": "Nombre Completo",
+                            "tipo": "text",
+                            "obligatorio": True,
+                            "mostrar_en_tabla": True,
+                            "placeholder": "Ej: Juan Pérez"
+                        },
+                        {
+                            "campo": "email",
+                            "nombre": "Email",
+                            "tipo": "email",
+                            "obligatorio": True,
+                            "mostrar_en_tabla": True,
+                            "placeholder": "ejemplo@email.com"
+                        },
+                        {
+                            "campo": "telefono",
+                            "nombre": "Teléfono",
+                            "tipo": "phone",
+                            "obligatorio": True,
+                            "mostrar_en_tabla": True,
+                            "placeholder": "+54 11 1234-5678"
+                        },
+                        {
+                            "campo": "estado",
+                            "nombre": "Estado",
+                            "tipo": "select",
+                            "obligatorio": True,
+                            "mostrar_en_tabla": True,
+                            "opciones": [
+                                {"valor": "activo", "label": "Activo"},
+                                {"valor": "inactivo", "label": "Inactivo"},
+                                {"valor": "suspendido", "label": "Suspendido"}
+                            ]
+                        },
+                        {
+                            "campo": "fecha_alta",
+                            "nombre": "Fecha de Alta",
+                            "tipo": "date",
+                            "mostrar_en_tabla": True
+                        }
+                    ]
+                },
+                "activa": True
+            },
+            {
+                "business_id": business_id,
+                "entidad": "tickets",
+                "descripcion": "Sistema de tickets",
+                "configuracion": {
+                    "campos": [
+                        {
+                            "campo": "id",
+                            "nombre": "ID",
+                            "tipo": "number",
+                            "mostrar_en_tabla": True
+                        },
+                        {
+                            "campo": "titulo",
+                            "nombre": "Título",
+                            "tipo": "text",
+                            "obligatorio": True,
+                            "mostrar_en_tabla": True
+                        },
+                        {
+                            "campo": "estado",
+                            "nombre": "Estado",
+                            "tipo": "select",
+                            "obligatorio": True,
+                            "mostrar_en_tabla": True,
+                            "opciones": [
+                                {"valor": "abierto", "label": "Abierto"},
+                                {"valor": "en_progreso", "label": "En Progreso"},
+                                {"valor": "resuelto", "label": "Resuelto"},
+                                {"valor": "cerrado", "label": "Cerrado"}
+                            ]
+                        },
+                        {
+                            "campo": "prioridad",
+                            "nombre": "Prioridad",
+                            "tipo": "select",
+                            "mostrar_en_tabla": True,
+                            "opciones": [
+                                {"valor": "baja", "label": "Baja"},
+                                {"valor": "media", "label": "Media"},
+                                {"valor": "alta", "label": "Alta"},
+                                {"valor": "critica", "label": "Crítica"}
+                            ]
+                        }
+                    ]
+                },
+                "activa": True
+            }
+        ]
+        
+        logger.info(f"✅ Retornando {len(mock_entities)} entidades mock")
+        return {"success": True, "data": mock_entities}
+        
+    except Exception as e:
+        logger.error(f"❌ Error: {e}")
+        return {"success": False, "error": str(e), "data": []}
+
+@app.get("/api/business/entities/{business_id}/{entity_name}")
+async def get_entity_data_simple(
+    business_id: str,
+    entity_name: str,
+    page: int = 1,
+    per_page: int = 10
+):
+    """Datos mock para testing"""
+    try:
+        logger.info(f"🔍 Datos solicitados: {entity_name} para {business_id}")
+        
+        # Datos mock
+        mock_data = {
+            "clientes": [
+                {
+                    "id": 1,
+                    "nombre": "Juan Pérez",
+                    "email": "juan@clinica.com",
+                    "telefono": "+54 11 1234-5678",
+                    "estado": "activo",
+                    "fecha_alta": "2024-01-15"
+                },
+                {
+                    "id": 2,
+                    "nombre": "María García",
+                    "email": "maria@clinica.com",
+                    "telefono": "+54 11 8765-4321",
+                    "estado": "activo",
+                    "fecha_alta": "2024-02-20"
+                },
+                {
+                    "id": 3,
+                    "nombre": "Carlos López",
+                    "email": "carlos@clinica.com",
+                    "telefono": "+54 11 5555-0000",
+                    "estado": "suspendido",
+                    "fecha_alta": "2024-01-10"
+                },
+                {
+                    "id": 4,
+                    "nombre": "Ana Martínez",
+                    "email": "ana@clinica.com",
+                    "telefono": "+54 11 9999-1111",
+                    "estado": "activo",
+                    "fecha_alta": "2023-12-05"
+                },
+                {
+                    "id": 5,
+                    "nombre": "Roberto Silva",
+                    "email": "roberto@clinica.com",
+                    "telefono": "+54 11 7777-2222",
+                    "estado": "activo",
+                    "fecha_alta": "2024-03-01"
+                }
+            ],
+            "tickets": [
+                {
+                    "id": 1,
+                    "titulo": "Consulta sobre horarios",
+                    "estado": "abierto",
+                    "prioridad": "media",
+                    "fecha_creacion": "2024-01-20"
+                },
+                {
+                    "id": 2,
+                    "titulo": "Problema con la cita",
+                    "estado": "resuelto",
+                    "prioridad": "alta",
+                    "fecha_creacion": "2024-01-18"
+                },
+                {
+                    "id": 3,
+                    "titulo": "Solicitud de informe",
+                    "estado": "en_progreso",
+                    "prioridad": "baja",
+                    "fecha_creacion": "2024-01-22"
+                }
+            ]
+        }
+        
+        entity_data = mock_data.get(entity_name, [])
+        total = len(entity_data)
+        
+        # Simular paginación
+        start = (page - 1) * per_page
+        end = start + per_page
+        items = entity_data[start:end]
+        
+        result = {
+            "success": True,
+            "data": {
+                "items": items,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": (total + per_page - 1) // per_page
+            }
+        }
+        
+        logger.info(f"✅ Retornando {len(items)}/{total} items de {entity_name}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/business/entities/{business_id}/{entity_name}")
+async def create_entity_simple(
+    business_id: str,
+    entity_name: str,
+    item_data: dict
+):
+    """Simular creación de entidad"""
+    logger.info(f"✅ Simulando creación en {entity_name}: {item_data}")
+    
+    # Simular creación exitosa
+    item_data["id"] = 999  # ID simulado
+    item_data["created_at"] = datetime.now().isoformat()
+    
+    return {
+        "success": True,
+        "data": item_data,
+        "message": "Item creado exitosamente (simulado)"
+    }
+
+@app.put("/api/business/entities/{business_id}/{entity_name}/{item_id}")
+async def update_entity_simple(
+    business_id: str,
+    entity_name: str,
+    item_id: str,
+    item_data: dict
+):
+    """Simular actualización"""
+    logger.info(f"✅ Simulando actualización {entity_name}/{item_id}: {item_data}")
+    
+    item_data["id"] = int(item_id)
+    item_data["updated_at"] = datetime.now().isoformat()
+    
+    return {
+        "success": True,
+        "data": item_data,
+        "message": "Item actualizado exitosamente (simulado)"
+    }
+
+@app.delete("/api/business/entities/{business_id}/{entity_name}/{item_id}")
+async def delete_entity_simple(
+    business_id: str,
+    entity_name: str,
+    item_id: str
+):
+    """Simular eliminación"""
+    logger.info(f"✅ Simulando eliminación {entity_name}/{item_id}")
+    
+    return {
+        "success": True,
+        "data": {"deleted": True},
+        "message": "Item eliminado exitosamente (simulado)"
+    }

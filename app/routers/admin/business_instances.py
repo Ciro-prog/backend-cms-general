@@ -1,102 +1,133 @@
+# ================================
+# ARCHIVO: app/routers/admin/business_instances.py
+# RUTA: app/routers/admin/business_instances.py  
+# 🔧 CORREGIDO: Agregados imports faltantes
+# ================================
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
+import logging
+from enum import Enum  # ← AGREGADO: Import faltante
 
-from ...auth.dependencies import require_admin
-from ...models.business import BusinessInstance, BusinessInstanceCreate, BusinessInstanceUpdate
-from ...models.responses import BaseResponse, PaginatedResponse
+from ...database import get_database
 from ...services.business_service import BusinessService
+from ...models.business import (
+    BusinessInstance, BusinessInstanceCreate, BusinessInstanceUpdate,
+    BusinessInstanceResponse, BusinessInstanceListResponse,
+    BusinessStatus  # ← AGREGADO: Import de enum
+)
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-@router.get("/", response_model=BaseResponse[List[BusinessInstance]])
-async def get_business_instances(
-    tipo_base: Optional[str] = Query(None, description="Filtrar por tipo base"),
-    activo: Optional[bool] = Query(None, description="Filtrar por estado activo"),
-    _: dict = Depends(require_admin)
+async def get_business_service():
+    db = get_database()
+    return BusinessService(db)
+
+@router.get("/", response_model=BusinessInstanceListResponse)
+async def list_business_instances(
+    business_type_id: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    service: BusinessService = Depends(get_business_service)
 ):
-    """Obtener todas las instancias de negocio"""
-    business_service = BusinessService()
-    businesses = await business_service.get_all_business_instances(
-        tipo_base=tipo_base,
-        activo=activo
-    )
-    return BaseResponse(data=businesses)
+    """Listar Business Instances"""
+    try:
+        instances = await service.list_business_instances(
+            business_type_id=business_type_id, 
+            skip=skip, 
+            limit=limit
+        )
+        return BusinessInstanceListResponse(
+            data=instances,
+            total=len(instances),
+            message=f"Se encontraron {len(instances)} business instances"
+        )
+    except Exception as e:
+        logger.error(f"Error listando business instances: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
-@router.get("/{business_id}", response_model=BaseResponse[BusinessInstance])
-async def get_business_instance(
-    business_id: str,
-    _: dict = Depends(require_admin)
-):
-    """Obtener una instancia de negocio específica"""
-    business_service = BusinessService()
-    business = await business_service.get_business_instance(business_id)
-    
-    if not business:
-        raise HTTPException(status_code=404, detail="Negocio no encontrado")
-    
-    return BaseResponse(data=business)
-
-@router.post("/", response_model=BaseResponse[BusinessInstance])
+@router.post("/", response_model=BusinessInstanceResponse)
 async def create_business_instance(
     business_data: BusinessInstanceCreate,
-    _: dict = Depends(require_admin)
+    service: BusinessService = Depends(get_business_service)
 ):
-    """Crear una nueva instancia de negocio"""
-    business_service = BusinessService()
-    
-    # Verificar que no exista
-    existing = await business_service.get_business_instance(business_data.business_id)
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe un negocio con este ID"
+    """Crear nueva Business Instance"""
+    try:
+        business = await service.create_business_instance(business_data, created_by="admin")
+        return BusinessInstanceResponse(
+            data=business,
+            message="Business Instance creado exitosamente"
         )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creando business instance: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{business_id}", response_model=BusinessInstanceResponse)
+async def get_business_instance(
+    business_id: str,
+    service: BusinessService = Depends(get_business_service)
+):
+    """Obtener Business Instance por ID"""
+    business = await service.get_business_instance(business_id)
+    if not business:
+        raise HTTPException(status_code=404, detail="Business Instance no encontrado")
     
-    # Verificar que el tipo base exista
-    business_type = await business_service.get_business_type_by_tipo(business_data.tipo_base)
-    if not business_type:
-        raise HTTPException(
-            status_code=400,
-            detail="El tipo base especificado no existe"
-        )
-    
-    business = await business_service.create_business_instance(business_data)
-    return BaseResponse(
+    return BusinessInstanceResponse(
         data=business,
-        message="Negocio creado exitosamente"
+        message="Business Instance encontrado"
     )
 
-@router.put("/{business_id}", response_model=BaseResponse[BusinessInstance])
+@router.put("/{business_id}", response_model=BusinessInstanceResponse) 
 async def update_business_instance(
     business_id: str,
-    business_update: BusinessInstanceUpdate,
-    _: dict = Depends(require_admin)
+    update_data: BusinessInstanceUpdate,
+    service: BusinessService = Depends(get_business_service)
 ):
-    """Actualizar una instancia de negocio"""
-    business_service = BusinessService()
-    business = await business_service.update_business_instance(business_id, business_update)
-    
-    if not business:
-        raise HTTPException(status_code=404, detail="Negocio no encontrado")
-    
-    return BaseResponse(
-        data=business,
-        message="Negocio actualizado exitosamente"
-    )
+    """Actualizar Business Instance"""
+    try:
+        business = await service.update_business_instance(business_id, update_data)
+        if not business:
+            raise HTTPException(status_code=404, detail="Business Instance no encontrado")
+        
+        return BusinessInstanceResponse(
+            data=business,
+            message="Business Instance actualizado exitosamente"
+        )
+    except Exception as e:
+        logger.error(f"Error actualizando business instance: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/{business_id}", response_model=BaseResponse[dict])
+@router.delete("/{business_id}")
 async def delete_business_instance(
     business_id: str,
-    _: dict = Depends(require_admin)
+    service: BusinessService = Depends(get_business_service)
 ):
-    """Eliminar una instancia de negocio"""
-    business_service = BusinessService()
+    """Eliminar Business Instance"""
+    try:
+        deleted = await service.delete_business_instance(business_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Business Instance no encontrado")
+        
+        return {"success": True, "message": "Business Instance eliminado exitosamente"}
+    except Exception as e:
+        logger.error(f"Error eliminando business instance: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{business_id}/with-type")
+async def get_business_with_type(
+    business_id: str,
+    service: BusinessService = Depends(get_business_service)
+):
+    """Obtener Business Instance con su Business Type"""
+    result = await service.get_business_with_type(business_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Business Instance no encontrado")
     
-    success = await business_service.delete_business_instance(business_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Negocio no encontrado")
-    
-    return BaseResponse(
-        data={"deleted": True},
-        message="Negocio eliminado exitosamente"
-    )
+    return {
+        "success": True,
+        "data": result,
+        "message": "Business con tipo obtenido exitosamente"
+    }

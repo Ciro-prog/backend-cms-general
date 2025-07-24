@@ -1,5 +1,7 @@
 # ================================
-# app/frontend/routers/auth.py
+# ARCHIVO: app/frontend/routers/auth.py
+# RUTA: app/frontend/routers/auth.py
+# 🔧 CORREGIDO: Debe exportar 'router'
 # ================================
 
 from fastapi import APIRouter, Request, Form, Depends
@@ -9,7 +11,7 @@ import logging
 
 from ..auth import authenticate_user, login_user, logout_user, get_current_user
 
-router = APIRouter()
+router = APIRouter()  # ← DEBE ESTAR PRESENTE Y SER LLAMADO 'router'
 templates = Jinja2Templates(directory="app/frontend/templates")
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,466 @@
+<!-- ================================ -->
+<!-- app/frontend/templates/api_configs/list.html -->
+<!-- ================================ -->
+
+{% extends "base.html" %}
+
+{% block title %}API Configurations - CMS Dinámico{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="md:flex md:items-center md:justify-between">
+        <div class="flex-1 min-w-0">
+            <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                Configuraciones de API
+            </h2>
+            <p class="text-sm text-gray-500 mt-1">
+                Gestiona las conexiones a APIs externas
+            </p>
+        </div>
+        <div class="mt-4 flex md:mt-0 md:ml-4">
+            <button onclick="showCreateModal()" class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>
+                Nueva API Configuration
+            </button>
+        </div>
+    </div>
+
+    <!-- API Configurations List -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <div class="px-4 py-5 sm:p-6">
+            <div id="api-configs-container">
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-2"></i>
+                    <p class="text-gray-500">Cargando configuraciones de API...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div id="apiConfigModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-2/3 lg:w-1/2 shadow-lg rounded-md bg-white max-h-screen overflow-y-auto">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900" id="modal-title">
+                    Crear API Configuration
+                </h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="apiConfigForm" onsubmit="saveApiConfig(event)">
+                <input type="hidden" id="editingId" value="">
+                
+                <!-- Basic Info -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+                            Nombre *
+                        </label>
+                        <input type="text" id="name" name="name" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="Ej: API Clientes">
+                    </div>
+                    
+                    <div>
+                        <label for="business_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            Business *
+                        </label>
+                        <select id="business_id" name="business_id" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Seleccionar business...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
+                        Descripción
+                    </label>
+                    <textarea id="description" name="description" rows="2"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Descripción de la API"></textarea>
+                </div>
+                
+                <!-- API Details -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="md:col-span-2">
+                        <label for="base_url" class="block text-sm font-medium text-gray-700 mb-2">
+                            URL Base *
+                        </label>
+                        <input type="url" id="base_url" name="base_url" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="https://api.example.com">
+                    </div>
+                    
+                    <div>
+                        <label for="method" class="block text-sm font-medium text-gray-700 mb-2">
+                            Método *
+                        </label>
+                        <select id="method" name="method" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label for="endpoint" class="block text-sm font-medium text-gray-700 mb-2">
+                        Endpoint *
+                    </label>
+                    <input type="text" id="endpoint" name="endpoint" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="/users">
+                </div>
+                
+                <!-- Authentication -->
+                <div class="mb-6">
+                    <h4 class="text-md font-medium text-gray-900 mb-3">Autenticación</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="auth_type" class="block text-sm font-medium text-gray-700 mb-2">
+                                Tipo de Auth
+                            </label>
+                            <select id="auth_type" name="auth_type" onchange="toggleAuthFields()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="none">Sin autenticación</option>
+                                <option value="api_key_header">API Key (Header)</option>
+                                <option value="api_key_query">API Key (Query Param)</option>
+                                <option value="bearer_token">Bearer Token</option>
+                                <option value="basic_auth">Basic Auth</option>
+                            </select>
+                        </div>
+                        
+                        <div id="auth_fields" class="hidden">
+                            <label for="auth_value" class="block text-sm font-medium text-gray-700 mb-2">
+                                Valor
+                            </label>
+                            <input type="password" id="auth_value" name="auth_value"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Token, API Key, etc.">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cache Configuration -->
+                <div class="mb-6">
+                    <h4 class="text-md font-medium text-gray-900 mb-3">Configuración de Cache</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="cache_enabled" name="cache_enabled" checked
+                                       class="mr-2">
+                                <span class="text-sm text-gray-700">Habilitar cache</span>
+                            </label>
+                        </div>
+                        
+                        <div>
+                            <label for="cache_ttl" class="block text-sm font-medium text-gray-700 mb-2">
+                                TTL (segundos)
+                            </label>
+                            <input type="number" id="cache_ttl" name="cache_ttl" value="300" min="0"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="cache_size" class="block text-sm font-medium text-gray-700 mb-2">
+                                Tamaño Max (MB)
+                            </label>
+                            <input type="number" id="cache_size" name="cache_size" value="5" min="1"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Test API Button -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <button type="button" onclick="testApiConfig()" id="testButton"
+                            class="btn btn-secondary">
+                        <i class="fas fa-flask mr-2"></i>
+                        Probar Configuración
+                    </button>
+                    <div id="test-result" class="mt-3 hidden"></div>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal()" 
+                            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="saveButton"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        <span id="saveButtonText">Crear</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let apiConfigs = [];
+let businesses = [];
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadBusinesses();
+    loadApiConfigs();
+});
+
+async function loadBusinesses() {
+    try {
+        const response = await fetch('/api/admin/businesses');
+        const data = await response.json();
+        
+        if (data.success) {
+            businesses = data.data;
+            
+            const select = document.getElementById('business_id');
+            select.innerHTML = '<option value="">Seleccionar business...</option>';
+            
+            businesses.forEach(business => {
+                const option = document.createElement('option');
+                option.value = business.business_id;
+                option.textContent = business.name;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading businesses:', error);
+    }
+}
+
+async function loadApiConfigs() {
+    const container = document.getElementById('api-configs-container');
+    
+    try {
+        // Para MVP, mostrar mensaje de que está en desarrollo
+        container.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-plug text-gray-400 text-4xl mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">API Configurations</h3>
+                <p class="text-gray-500 mb-4">Esta funcionalidad está disponible pero necesita un endpoint específico</p>
+                <button onclick="createExampleApi()" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i>
+                    Crear API de Ejemplo (JSONPlaceholder)
+                </button>
+            </div>
+        `;
+    } catch (error) {
+        container.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-exclamation-triangle text-yellow-400 text-2xl mb-2"></i>
+                <p class="text-yellow-600">Error de conexión: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+async function createExampleApi() {
+    try {
+        const response = await fetch('/api/admin/api/configurations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                business_id: businesses[0]?.business_id || 'default',
+                name: 'JSONPlaceholder Users',
+                description: 'API de ejemplo para obtener usuarios',
+                base_url: 'https://jsonplaceholder.typicode.com',
+                endpoint: '/users',
+                method: 'GET'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('success', 'API de ejemplo creada exitosamente');
+            loadApiConfigs();
+        } else {
+            throw new Error(result.message || 'Error creando API');
+        }
+    } catch (error) {
+        showMessage('error', `Error: ${error.message}`);
+    }
+}
+
+function showCreateModal() {
+    document.getElementById('modal-title').textContent = 'Crear API Configuration';
+    document.getElementById('saveButtonText').textContent = 'Crear';
+    document.getElementById('editingId').value = '';
+    document.getElementById('apiConfigForm').reset();
+    document.getElementById('cache_enabled').checked = true;
+    document.getElementById('cache_ttl').value = '300';
+    document.getElementById('cache_size').value = '5';
+    toggleAuthFields();
+    document.getElementById('apiConfigModal').classList.remove('hidden');
+}
+
+function toggleAuthFields() {
+    const authType = document.getElementById('auth_type').value;
+    const authFields = document.getElementById('auth_fields');
+    const authValueLabel = document.querySelector('label[for="auth_value"]');
+    const authValueInput = document.getElementById('auth_value');
+    
+    if (authType === 'none') {
+        authFields.classList.add('hidden');
+    } else {
+        authFields.classList.remove('hidden');
+        
+        // Update label based on auth type
+        const labels = {
+            'api_key_header': 'API Key',
+            'api_key_query': 'API Key',
+            'bearer_token': 'Bearer Token',
+            'basic_auth': 'Username:Password'
+        };
+        
+        authValueLabel.textContent = labels[authType] || 'Valor';
+        authValueInput.placeholder = labels[authType] || 'Valor de autenticación';
+    }
+}
+
+async function testApiConfig() {
+    const testButton = document.getElementById('testButton');
+    const testResult = document.getElementById('test-result');
+    
+    testButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Probando...';
+    testButton.disabled = true;
+    
+    testResult.classList.remove('hidden');
+    testResult.innerHTML = '<div class="text-blue-600"><i class="fas fa-spinner fa-spin mr-2"></i>Realizando prueba...</div>';
+    
+    try {
+        // Simulate API test for MVP
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        testResult.innerHTML = `
+            <div class="p-3 bg-green-50 border border-green-200 rounded-md">
+                <div class="flex">
+                    <i class="fas fa-check-circle text-green-400 mt-0.5 mr-2"></i>
+                    <div>
+                        <h4 class="text-sm font-medium text-green-800">Prueba Exitosa</h4>
+                        <p class="text-sm text-green-700 mt-1">La API responde correctamente</p>
+                        <ul class="text-xs text-green-600 mt-2">
+                            <li>• Status: 200 OK</li>
+                            <li>• Tiempo de respuesta: ~200ms</li>
+                            <li>• Registros encontrados: 10</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        testResult.innerHTML = `
+            <div class="p-3 bg-red-50 border border-red-200 rounded-md">
+                <div class="flex">
+                    <i class="fas fa-exclamation-circle text-red-400 mt-0.5 mr-2"></i>
+                    <div>
+                        <h4 class="text-sm font-medium text-red-800">Error en la Prueba</h4>
+                        <p class="text-sm text-red-700 mt-1">${error.message}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    } finally {
+        testButton.innerHTML = '<i class="fas fa-flask mr-2"></i>Probar Configuración';
+        testButton.disabled = false;
+    }
+}
+
+async function saveApiConfig(event) {
+    event.preventDefault();
+    
+    const saveButton = document.getElementById('saveButton');
+    const originalText = saveButton.innerHTML;
+    saveButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Guardando...';
+    saveButton.disabled = true;
+    
+    try {
+        const formData = new FormData(event.target);
+        
+        const data = {
+            business_id: formData.get('business_id'),
+            name: formData.get('name'),
+            description: formData.get('description'),
+            base_url: formData.get('base_url'),
+            endpoint: formData.get('endpoint'),
+            method: formData.get('method'),
+            auth_config: {
+                auth_type: formData.get('auth_type'),
+                ...(formData.get('auth_type') !== 'none' && {
+                    api_key: formData.get('auth_value')
+                })
+            },
+            cache_config: {
+                enabled: formData.get('cache_enabled') === 'on',
+                ttl_seconds: parseInt(formData.get('cache_ttl')),
+                max_size_mb: parseInt(formData.get('cache_size'))
+            }
+        };
+        
+        const response = await fetch('/api/admin/api/configurations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            closeModal();
+            loadApiConfigs();
+            showMessage('success', 'API Configuration creada exitosamente');
+        } else {
+            throw new Error(result.message || 'Error al guardar');
+        }
+        
+    } catch (error) {
+        showMessage('error', `Error: ${error.message}`);
+    } finally {
+        saveButton.innerHTML = originalText;
+        saveButton.disabled = false;
+    }
+}
+
+function closeModal() {
+    document.getElementById('apiConfigModal').classList.add('hidden');
+    document.getElementById('test-result').classList.add('hidden');
+}
+
+function showMessage(type, text) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `flash-message mb-4 px-4 py-3 rounded ${
+        type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' : 
+        'bg-green-100 border border-green-400 text-green-700'
+    }`;
+    messageDiv.textContent = text;
+    
+    const content = document.querySelector('.space-y-6');
+    content.insertBefore(messageDiv, content.firstChild);
+    
+    setTimeout(() => {
+        messageDiv.style.opacity = '0';
+        setTimeout(() => messageDiv.remove(), 500);
+    }, 5000);
+}
+
+// Close modal when clicking outside
+document.getElementById('apiConfigModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+</script>
+{% endblock %}

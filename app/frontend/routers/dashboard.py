@@ -16,22 +16,28 @@ logger = logging.getLogger(__name__)
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, current_user: dict = Depends(require_auth)):
-    """Dashboard principal con permisos"""
+    """Dashboard principal con permisos y estadísticas condicionales"""
     
-    # Obtener información del sistema
+    # Obtener estado del sistema
     system_info = await get_system_health()
-    
-    # Obtener estadísticas según rol
+
+    # Obtener estadísticas solo si es admin/super_admin
     stats = {}
     if current_user["role"] in ["admin", "super_admin"]:
         stats = await get_admin_stats()
-    
-    # Template con datos del usuario y sistema
-    return templates.TemplateResponse("dashboard_with_permissions.html", {
+
+    # Si tiene business_id, intentar obtener información del negocio
+    business_info = None
+    if current_user.get("business_id"):
+        business_info = await get_business_data(current_user["business_id"])
+
+    return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "current_user": current_user,
         "system_info": system_info,
-        "stats": stats
+        "stats": stats,
+        "business_info": business_info,
+        "messages": request.session.get("messages", [])
     })
 
 @router.get("/business-dashboard/{business_id}", response_class=HTMLResponse)
@@ -40,18 +46,16 @@ async def business_dashboard(
     business_id: str,
     current_user: dict = Depends(require_auth)
 ):
-    """Dashboard específico del business"""
+    """Dashboard específico para un negocio, con control de permisos"""
     
-    # Verificar permisos de acceso al business
     if current_user["role"] != "super_admin" and current_user.get("business_id") != business_id:
         return templates.TemplateResponse("errors/403.html", {
             "request": request,
             "error": "No tienes permisos para acceder a este dashboard"
         }, status_code=403)
     
-    # Cargar datos del business
     business_data = await get_business_data(business_id)
-    
+
     return templates.TemplateResponse("business_dashboard.html", {
         "request": request,
         "current_user": current_user,
@@ -62,7 +66,7 @@ async def business_dashboard(
 # === FUNCIONES AUXILIARES ===
 
 async def get_system_health():
-    """Obtener estado del sistema"""
+    """Consulta el estado del sistema (health check)"""
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get("http://localhost:8000/health", timeout=5.0)
@@ -82,7 +86,7 @@ async def get_system_health():
     }
 
 async def get_admin_stats():
-    """Obtener estadísticas para admins"""
+    """Estadísticas globales visibles solo para administradores"""
     stats = {
         "businessTypes": 0,
         "totalBusinesses": 0,
@@ -112,7 +116,7 @@ async def get_admin_stats():
     return stats
 
 async def get_business_data(business_id: str):
-    """Obtener datos específicos del business"""
+    """Carga datos del dashboard de un negocio específico"""
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(f"http://localhost:8000/api/business/dashboard/{business_id}", timeout=10.0)

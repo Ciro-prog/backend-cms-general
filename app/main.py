@@ -127,10 +127,33 @@ def setup_frontend():
     """Configurar el frontend después de que la app esté lista"""
     try:
         from .frontend.routers import frontend_router
-        app.include_router(frontend_router)
+        app.include_router(frontend_router, tags=["frontend"])
         logger.info("✅ Frontend configurado exitosamente")
     except Exception as e:
-        logger.error(f"❌ Error configurando frontend: {e}")
+        logger.warning(f"⚠️ Frontend no disponible: {e}")
+
+def setup_api_routers():
+    """Configurar los routers de la API backend"""
+    try:
+        from .routers.admin import router as admin_router
+        app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+        logger.info("✅ Router admin incluido")
+    except Exception as e:
+        logger.warning(f"⚠️ Router admin no disponible: {e}")
+
+    try:
+        from .routers.business import router as business_router
+        app.include_router(business_router, prefix="/api/business", tags=["business"])
+        logger.info("✅ Router business incluido")
+    except Exception as e:
+        logger.warning(f"⚠️ Router business no disponible: {e}")
+
+    try:
+        from .routers.auth import router as api_auth_router
+        app.include_router(api_auth_router, prefix="/api/auth", tags=["auth"])
+        logger.info("✅ Router auth incluido")
+    except Exception as e:
+        logger.warning(f"⚠️ Router auth no disponible: {e}")
 
 # Middleware para limpiar mensajes flash después de mostrarlos
 @app.middleware("http")
@@ -702,6 +725,9 @@ async def test_all_integrations():
 
 # Configurar las rutas del frontend PRIMERO
 setup_frontend()
+# Configurar API routers
+
+setup_api_routers()
 
 # Incluir los routers de la API backend con manejo de errores
 try:

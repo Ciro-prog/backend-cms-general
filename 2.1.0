@@ -1,0 +1,19 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting pydantic
+  Using cached pydantic-2.11.7-py3-none-any.whl.metadata (67 kB)
+Collecting pydantic-core
+  Using cached pydantic_core-2.36.0-cp313-cp313-win_amd64.whl.metadata (6.9 kB)
+Collecting pydantic-settings
+  Using cached pydantic_settings-2.10.1-py3-none-any.whl.metadata (3.4 kB)
+Requirement already satisfied: annotated-types>=0.6.0 in c:\users\metra\appdata\roaming\python\python313\site-packages (from pydantic) (0.7.0)
+Collecting pydantic-core
+  Using cached pydantic_core-2.33.2-cp313-cp313-win_amd64.whl.metadata (6.9 kB)
+Requirement already satisfied: typing-extensions>=4.12.2 in c:\users\metra\appdata\roaming\python\python313\site-packages (from pydantic) (4.14.1)
+Requirement already satisfied: typing-inspection>=0.4.0 in c:\users\metra\appdata\roaming\python\python313\site-packages (from pydantic) (0.4.1)
+Requirement already satisfied: python-dotenv>=0.21.0 in c:\users\metra\appdata\roaming\python\python313\site-packages (from pydantic-settings) (1.0.0)
+Using cached pydantic-2.11.7-py3-none-any.whl (444 kB)
+Using cached pydantic_core-2.33.2-cp313-cp313-win_amd64.whl (2.0 MB)
+Using cached pydantic_settings-2.10.1-py3-none-any.whl (45 kB)
+Installing collected packages: pydantic-core, pydantic, pydantic-settings
+
+Successfully installed pydantic-2.11.7 pydantic-core-2.33.2 pydantic-settings-2.10.1

@@ -22,6 +22,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+
+
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+
+# Imports locales
+from .database import connect_to_mongo, close_mongo_connection, get_database, ping_database, create_indexes
+from .auth.dependencies import auth_middleware
+
 # Starlette
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -32,9 +40,10 @@ from pydantic import BaseModel, Field
 load_dotenv()
 
 # Local imports (comentados para evitar importaciones circulares - se importarán donde sea necesario)
-from .database import get_database, connect_to_mongo, close_mongo_connection
+from .database import get_database, connect_to_mongo, close_mongo_connection, ping_database, create_indexes
 # from .models.user import User
 from .config import settings
+
 
 # Configurar logging básico
 logging.basicConfig(
@@ -76,14 +85,37 @@ class BusinessInstanceCreate(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manejo del ciclo de vida de la aplicación"""
-    # Startup
-    logger.info("🚀 Iniciando CMS Dinámico (Backend + Frontend)...")
-    await connect_to_mongo()
+    """Gestión del ciclo de vida de la aplicación"""
+    
+    # STARTUP
+    logger.info("🚀 Iniciando CMS Dinámico...")
+    
+    try:
+        # Conectar a MongoDB
+        await connect_to_mongo()
+        
+        # Crear índices
+        await create_indexes()
+        
+        # Verificar conexión
+        db_connected = await ping_database()
+        if db_connected:
+            logger.info("✅ Base de datos conectada y configurada")
+        else:
+            logger.error("❌ Error en conexión a base de datos")
+        
+        logger.info("🎉 CMS Dinámico iniciado exitosamente!")
+        
+    except Exception as e:
+        logger.error(f"❌ Error durante startup: {e}")
+        raise
+    
     yield
-    # Shutdown
+    
+    # SHUTDOWN
     logger.info("🔄 Cerrando CMS Dinámico...")
     await close_mongo_connection()
+    logger.info("👋 CMS Dinámico cerrado correctamente")
 
 # ================================
 # FASTAPI APP
@@ -93,13 +125,15 @@ app = FastAPI(
     title="CMS Dinámico",
     description="Sistema de CMS dinámico y configurable con frontend integrado",
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
     lifespan=lifespan
 )
 
 # MIDDLEWARE DE SESIONES (para el frontend)
 app.add_middleware(
-    SessionMiddleware, 
-    secret_key=settings.secret_key or "cms-dinamico-secret-key-change-in-production"
+    SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY", "cms-dinamico-secret-key-change-in-production")
 )
 
 # CORS
@@ -109,6 +143,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+# Trusted hosts
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "*.localhost"]
 )
 
 # ARCHIVOS ESTÁTICOS Y TEMPLATES
@@ -124,13 +163,35 @@ app.mount("/static", StaticFiles(directory="app/frontend/static"), name="static"
 # ================================
 
 def setup_frontend():
-    """Configurar el frontend después de que la app esté lista"""
+    """Configurar rutas del frontend integrado"""
+    
+    # Archivos estáticos
     try:
-        from .frontend.routers import frontend_router
-        app.include_router(frontend_router)
-        logger.info("✅ Frontend configurado exitosamente")
+        app.mount("/static", StaticFiles(directory="app/frontend/static"), name="static")
+        logger.info("✅ Archivos estáticos montados")
+    except Exception as e:
+        logger.warning(f"⚠️ Error montando archivos estáticos: {e}")
+    
+    # Templates
+    try:
+        templates = Jinja2Templates(directory="app/frontend/templates")
+        
+        # Incluir router del frontend si existe
+        try:
+            from .frontend.routers import frontend_router
+            app.include_router(frontend_router, tags=["frontend"])
+            logger.info("✅ Frontend router incluido")
+        except Exception as e:
+            logger.warning(f"⚠️ Frontend router no disponible: {e}")
+            
+            # Ruta básica de fallback
+            @app.get("/")
+            async def home():
+                return {"message": "CMS Dinámico - Frontend en desarrollo"}
+                
     except Exception as e:
         logger.error(f"❌ Error configurando frontend: {e}")
+
 
 # Middleware para limpiar mensajes flash después de mostrarlos
 @app.middleware("http")
@@ -140,6 +201,168 @@ async def clear_flash_messages(request: Request, call_next):
     if hasattr(request, 'session') and "messages" in request.session:
         del request.session["messages"]
     return response
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    """Manejar errores 404"""
+    return {"error": "Endpoint no encontrado", "detail": str(exc.detail)}
+
+@app.exception_handler(500)
+async def internal_error_handler(request: Request, exc: Exception):
+    """Manejar errores internos"""
+    logger.error(f"Error interno: {exc}")
+    return {"error": "Error interno del servidor", "detail": "Contacta al administrador"}
+
+
+# ================================
+# INCLUIR ROUTERS DE LA API
+# ================================
+
+def setup_api_routers():
+    """Configurar routers de la API"""
+    
+    # Router admin
+    try:
+        from .routers import admin
+        app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+        logger.info("✅ Router admin incluido")
+    except Exception as e:
+        logger.warning(f"⚠️ Router admin no disponible: {e}")
+    
+    # Router business
+    try:
+        from .routers import business
+        app.include_router(business.router, prefix="/api/business", tags=["business"])
+        logger.info("✅ Router business incluido")
+    except Exception as e:
+        logger.warning(f"⚠️ Router business no disponible: {e}")
+    
+    # Router auth
+    try:
+        from .routers import auth as api_auth
+        app.include_router(api_auth.router, prefix="/api/auth", tags=["auth"])
+        logger.info("✅ Router auth incluido")
+    except Exception as e:
+        logger.warning(f"⚠️ Router auth no disponible: {e}")
+
+# ================================
+# NUEVO: ROUTER PARA CONFIGURACIÓN DE APIs
+# ================================
+
+def setup_api_configuration_routes():
+    """Configurar rutas para configuración de APIs"""
+    
+    from fastapi import APIRouter, Depends
+    from .auth.dependencies import require_admin_api
+    from .services.api_service import ApiService
+    from .models.responses import BaseResponse, create_success_response, create_error_response
+    from .models.api_config import ApiConfigurationCreate, ApiTestRequest
+    
+    # APIs de ejemplo predefinidas
+    EXAMPLE_APIS = {
+        "jsonplaceholder_users": {
+            "name": "JSONPlaceholder Users",
+            "description": "API pública de usuarios de prueba",
+            "base_url": "https://jsonplaceholder.typicode.com",
+            "endpoint": "/users",
+            "method": "GET"
+        },
+        "jsonplaceholder_posts": {
+            "name": "JSONPlaceholder Posts", 
+            "description": "API pública de posts de prueba",
+            "base_url": "https://jsonplaceholder.typicode.com",
+            "endpoint": "/posts",
+            "method": "GET"
+        },
+        "httpbin_get": {
+            "name": "HTTPBin GET Test",
+            "description": "API de testing HTTP",
+            "base_url": "https://httpbin.org",
+            "endpoint": "/get",
+            "method": "GET"
+        }
+    }
+    
+    api_config_router = APIRouter()
+    
+    @api_config_router.get("/examples")
+    async def get_example_apis():
+        """Obtener APIs de ejemplo predefinidas"""
+        return create_success_response(EXAMPLE_APIS, "APIs de ejemplo obtenidas")
+    
+    @api_config_router.post("/{business_id}/test")
+    async def test_api_connection(
+        business_id: str,
+        api_id: str,
+        test_request: ApiTestRequest,
+        current_user: dict = Depends(require_admin_api)
+    ):
+        """Probar conexión con API externa"""
+        api_service = ApiService()
+        
+        try:
+            result = await api_service.test_api_connection(
+                business_id=business_id,
+                api_id=api_id,
+                limit_records=test_request.limit_records
+            )
+            
+            if result.success:
+                return create_success_response(result.dict(), "Test de API exitoso")
+            else:
+                return create_error_response(
+                    error="Test de API falló",
+                    detail=result.error_message,
+                    error_code="API_TEST_FAILED"
+                )
+                
+        except Exception as e:
+            logger.error(f"Error en test de API: {e}")
+            return create_error_response(
+                error="Error interno en test de API",
+                detail=str(e),
+                error_code="INTERNAL_ERROR"
+            )
+    
+    @api_config_router.get("/{business_id}/{api_id}/data")
+    async def get_api_data(
+        business_id: str,
+        api_id: str,
+        page: int = 1,
+        per_page: int = 10,
+        current_user: dict = Depends(require_admin_api)
+    ):
+        """Obtener datos de API configurada"""
+        api_service = ApiService()
+        
+        try:
+            data, total = await api_service.fetch_api_data(
+                business_id=business_id,
+                api_id=api_id,
+                page=page,
+                per_page=per_page
+            )
+            
+            return create_success_response({
+                "data": data,
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total": total
+                }
+            }, "Datos obtenidos exitosamente")
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo datos de API: {e}")
+            return create_error_response(
+                error="Error obteniendo datos",
+                detail=str(e),
+                error_code="DATA_FETCH_ERROR"
+            )
+    
+    # Incluir el router
+    app.include_router(api_config_router, prefix="/api/config", tags=["api-config"])
+    logger.info("✅ Router configuración APIs incluido")
 
 # ================================
 # ENDPOINTS PRINCIPALES
@@ -215,6 +438,13 @@ async def app_info():
         "description": "Sistema de CMS dinámico y configurable con frontend integrado",
         "environment": "development",
         "python_version": "3.13",
+        "features": {
+            "api_configurations": True,
+            "dynamic_components": True,
+            "field_mapping": True,
+            "cache_system": True,
+            "rate_limiting": True
+        },
         "components": {
             "backend": "✅ FastAPI + MongoDB",
             "frontend": "✅ Jinja2 Templates",
@@ -696,12 +926,20 @@ async def test_all_integrations():
         "results": results
     }
 
-# ================================
-# AGREGAR AL FINAL DE app/main.py - CORREGIDO
-# ================================
-
 # Configurar las rutas del frontend PRIMERO
 setup_frontend()
+setup_api_routers()
+setup_api_configuration_routes()
+
+# Log de configuración completa
+logger.info("🎯 CMS Dinámico configurado con:")
+logger.info("  ✅ Conexión MongoDB")
+logger.info("  ✅ Sistema de autenticación")
+logger.info("  ✅ Configuración de APIs externas")
+logger.info("  ✅ Test de conexión en tiempo real")
+logger.info("  ✅ Field mapping automático")
+logger.info("  ✅ Frontend integrado")
+logger.info("🚀 Listo para usar!")
 
 # Incluir los routers de la API backend con manejo de errores
 try:

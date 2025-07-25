@@ -1,33 +1,58 @@
 # ================================
-# requirements.txt (VERSIONES QUE YA TIENES INSTALADAS)
+# requirements.txt - CMS Dinámico (Windows Compatible)
 # ================================
 
-# Core FastAPI - ✅ YA INSTALADO
-fastapi==0.108.0
-uvicorn==0.25.0
+# ================================
+# Core Web Server (Versiones estables con wheels)
+# ================================
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
 
-# Database - ✅ YA INSTALADO
+# ================================
+# Base de Datos - MongoDB
+# ================================
 motor==3.3.2
+pymongo==4.6.0
 
-# Validation & Config - ✅ YA INSTALADO (pydantic 2.11.7 es mejor que 2.5.2)
-pydantic>=2.11.7
+# ================================
+# Validación (Versiones compatibles Windows)
+# ================================
+pydantic==2.5.3
+pydantic-settings==2.1.0
+pydantic-core==2.14.6
 python-dotenv==1.0.0
 
-# Authentication & Security - ✅ YA INSTALADO
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-cryptography==42.0.0
+# ================================
+# HTTP Client 
+# ================================
+httpx==0.25.2
 
-# HTTP Client - ✅ YA INSTALADO
-httpx==0.26.0
+# ================================
+# Frontend y Templates
+# ================================
+jinja2==3.1.2
+python-multipart==0.0.6
+aiofiles==23.2.1
+itsdangerous==2.1.2
 
+# ================================
+# Autenticación (Sin compilación compleja)
+# ================================
+python-jose==3.3.0
+passlib==1.7.4
 
-# DEPENDENCIAS RESTANTES - Instalar estas:
-pydantic-settings>=2.1.0
-redis>=5.0.1
-aiofiles>=23.2.1
+# ================================
+# Redis (Opcional)
+# ================================
+redis==5.0.1
 
-# 🆕 FRONTEND DEPENDENCIES
-jinja2>=3.1.2              # Templates HTML
-python-multipart>=0.0.6    # Formularios HTML
-itsdangerous>=2.1.2        # Sesiones seguras
+# ================================
+# Utilidades básicas
+# ================================
+typing-extensions==4.8.0
+
+# ================================
+# Testing (Opcional)
+# ================================
+pytest==7.4.3
+pytest-asyncio==0.21.1

@@ -283,6 +283,34 @@
                     </div>
                 </div>
                 {% endif %}
+
+                {% if current_user.role == 'super_admin' %}
+                <div class="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="h-12 w-12 bg-indigo-500 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-xl">🔌</span>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-lg font-semibold text-gray-900">Gestión de APIs</h3>
+                                <p class="text-sm text-gray-500">Configura y administra APIs externas</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Accede a la gestión y configuración de integraciones con APIs externas para todos los negocios.
+                        </p>
+                        <div class="flex space-x-3">
+                            <a href="/api-management" 
+                               class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded text-center hover:bg-indigo-700 transition-colors">
+                                🔌 Ir a Gestión de APIs
+                            </a>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded">Solo Super Admin</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Modal de Configuración -->

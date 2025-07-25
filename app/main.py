@@ -716,6 +716,14 @@ try:
 except Exception as e:
     logger.warning(f"⚠️ Frontend router no disponible: {e}")
 
+# Incluir router admin de frontend para field mapping
+try:
+    from .frontend.routers.admin import router as admin_frontend_router
+    app.include_router(admin_frontend_router, tags=["frontend-admin"])
+    logger.info("✅ Admin frontend router (field mapping) incluido")
+except Exception as e:
+    logger.warning(f"⚠️ Admin frontend router no disponible: {e}")
+
 # ================================
 # ENDPOINTS HTML DE LOGIN Y DASHBOARD (como en main_problematic.py)
 # ================================

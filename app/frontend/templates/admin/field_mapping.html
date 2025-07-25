@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field Mapping - CMS Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-5xl mx-auto py-10">
+        <div class="mb-8 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-900">🔗 Field Mapping Automático</h1>
+            <a href="/api-management" class="text-blue-600 hover:underline">← Volver a Gestión de APIs</a>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Campos de la API -->
+            <div>
+                <h2 class="text-lg font-semibold mb-4">Campos de la API</h2>
+                <ul id="apiFields" class="bg-white rounded-lg shadow p-4 min-h-[200px] space-y-2">
+                    <!-- JS: campos detectados -->
+                </ul>
+            </div>
+            <!-- Mapeo visual -->
+            <div>
+                <h2 class="text-lg font-semibold mb-4">Mapeo</h2>
+                <div id="mappingArea" class="bg-white rounded-lg shadow p-4 min-h-[200px] flex flex-col space-y-2">
+                    <!-- JS: drag & drop -->
+                </div>
+                <button onclick="autoMap()" class="mt-4 w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">🔄 Autocompletar Mapeo</button>
+            </div>
+            <!-- Campos de la Entidad -->
+            <div>
+                <h2 class="text-lg font-semibold mb-4">Campos de la Entidad</h2>
+                <ul id="entityFields" class="bg-white rounded-lg shadow p-4 min-h-[200px] space-y-2">
+                    <!-- JS: campos de la entidad -->
+                </ul>
+            </div>
+        </div>
+        <div class="mt-8 flex justify-end space-x-4">
+            <button onclick="saveMapping()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">💾 Guardar Mapeo</button>
+        </div>
+        <div class="mt-8">
+            <h2 class="text-lg font-semibold mb-2">Preview del Mapeo</h2>
+            <pre id="mappingPreview" class="bg-gray-100 rounded p-4 text-sm overflow-x-auto"></pre>
+        </div>
+    </div>
+    <script src="/static/js/field_mapper.js"></script>
+    <script src="/static/js/auto_mapper.js"></script>
+</body>
+</html> 

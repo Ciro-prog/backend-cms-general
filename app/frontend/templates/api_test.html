@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de APIs - CMS Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Navbar -->
+    <nav class="bg-white shadow-lg border-b border-gray-200">
+        <div class="max-w-full mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-gray-900">
+                        🧪 Test de APIs
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/api-management" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-arrow-left mr-2"></i>Volver
+                    </a>
+                    <a href="/" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-home mr-2"></i>Inicio
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">🧪 Test de APIs</h1>
+                <p class="text-gray-600 mt-2">Prueba las conexiones de APIs externas en tiempo real</p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="/api-management" 
+                   class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Volver
+                </a>
+                <a href="/api-management/wizard" 
+                   class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                    <i class="fas fa-plus mr-2"></i>Nueva API
+                </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Test Form -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">🔧 Configuración de Test</h2>
+                
+                <form id="testForm" class="space-y-4">
+                    
+                    <!-- Quick Templates -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Templates Rápidos</label>
+                        <select onchange="loadTemplate(this.value)" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">Seleccionar template...</option>
+                            <option value="jsonplaceholder">JSONPlaceholder Users</option>
+                            <option value="httpbin">HTTPBin Test</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Método</label>
+                                <select id="method" name="method" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                    <option value="PUT">PUT</option>
+                                    <option value="DELETE">DELETE</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Business ID</label>
+                                <input type="text" id="businessId" name="business_id" value="test_business"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">URL Base</label>
+                        <input type="url" id="baseUrl" name="base_url" required
+                               placeholder="https://jsonplaceholder.typicode.com"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Endpoint</label>
+                        <input type="text" id="endpoint" name="endpoint" required
+                               placeholder="/users"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- URL Preview -->
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-sm text-gray-600 mb-1">URL Completa:</p>
+                        <p id="urlPreview" class="font-mono text-sm text-blue-600">https://jsonplaceholder.typicode.com/users</p>
+                    </div>
+
+                    <!-- Test Button -->
+                    <div class="border-t pt-4">
+                        <button type="button" onclick="runTest()" 
+                                class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-play mr-2"></i>Ejecutar Test
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Results -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">📊 Resultados</h2>
+                
+                <div id="noResults" class="text-center py-12 text-gray-500">
+                    <i class="fas fa-flask text-4xl mb-4"></i>
+                    <p>Ejecuta un test para ver los resultados</p>
+                </div>
+
+                <div id="testResults" class="hidden space-y-6">
+                    
+                    <!-- Status -->
+                    <div id="testStatus" class="p-4 rounded-lg">
+                        <div class="flex items-center">
+                            <div id="statusIcon" class="text-2xl mr-3"></div>
+                            <div>
+                                <h3 id="statusTitle" class="text-lg font-semibold"></h3>
+                                <p id="statusMessage" class="text-sm"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics -->
+                    <div id="testMetrics" class="grid grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <p id="responseCode" class="text-2xl font-bold text-blue-600">-</p>
+                            <p class="text-sm text-gray-600">Código</p>
+                        </div>
+                        <div class="text-center">
+                            <p id="responseTime" class="text-2xl font-bold text-green-600">-</p>
+                            <p class="text-sm text-gray-600">Tiempo</p>
+                        </div>
+                        <div class="text-center">
+                            <p id="recordCount" class="text-2xl font-bold text-purple-600">-</p>
+                            <p class="text-sm text-gray-600">Registros</p>
+                        </div>
+                    </div>
+
+                    <!-- Sample Data -->
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-2">📋 Datos de Muestra</h4>
+                        <div class="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                            <pre id="sampleData" class="text-sm text-gray-700"></pre>
+                        </div>
+                    </div>
+
+                    <!-- Detected Fields -->
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-2">🏷️ Campos Detectados</h4>
+                        <div id="detectedFields" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="border-t pt-4">
+                        <div class="flex space-x-3">
+                            <button onclick="saveAsAPI()" 
+                                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-save mr-2"></i>Guardar como API
+                            </button>
+                            <button onclick="copyConfig()" 
+                                    class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                <i class="fas fa-copy mr-2"></i>Copiar Config
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Test History -->
+        <div class="mt-8 bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900">📈 Historial de Tests</h2>
+            </div>
+            <div class="p-6">
+                <div id="testHistory" class="space-y-3">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-history text-3xl mb-2"></i>
+                        <p>No hay tests realizados aún</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        let testHistory = [];
+
+        // Templates
+        const templates = {
+            jsonplaceholder: {
+                name: "JSONPlaceholder Users",
+                base_url: "https://jsonplaceholder.typicode.com",
+                endpoint: "/users",
+                method: "GET"
+            },
+            httpbin: {
+                name: "HTTPBin Test",
+                base_url: "https://httpbin.org",
+                endpoint: "/json",
+                method: "GET"
+            }
+        };
+
+        function loadTemplate(templateId) {
+            if (!templateId || templateId === 'custom') {
+                document.getElementById('baseUrl').value = '';
+                document.getElementById('endpoint').value = '';
+                updateUrlPreview();
+                return;
+            }
+            
+            const template = templates[templateId];
+            if (template) {
+                document.getElementById('baseUrl').value = template.base_url;
+                document.getElementById('endpoint').value = template.endpoint;
+                document.getElementById('method').value = template.method;
+                updateUrlPreview();
+            }
+        }
+
+        function updateUrlPreview() {
+            const baseUrl = document.getElementById('baseUrl').value || '';
+            const endpoint = document.getElementById('endpoint').value || '';
+            document.getElementById('urlPreview').textContent = baseUrl + endpoint;
+        }
+
+        async function runTest() {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Probando...';
+            button.disabled = true;
+            
+            try {
+                const formData = new FormData(document.getElementById('testForm'));
+                
+                // Add required fields
+                formData.append('api_id', 'test_' + Date.now());
+                formData.append('name', 'Test API');
+                
+                const response = await fetch('/api-management/test-connection', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                // Add to history
+                testHistory.unshift({
+                    timestamp: new Date().toISOString(),
+                    url: document.getElementById('urlPreview').textContent,
+                    success: result.success,
+                    ...result.data
+                });
+                
+                updateTestHistory();
+                showTestResults(result);
+                
+            } catch (error) {
+                showTestResults({
+                    success: false,
+                    error: error.message
+                });
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+
+        function showTestResults(result) {
+            document.getElementById('noResults').classList.add('hidden');
+            document.getElementById('testResults').classList.remove('hidden');
+            
+            const statusDiv = document.getElementById('testStatus');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            if (result.success) {
+                statusDiv.className = 'p-4 rounded-lg bg-green-50 border border-green-200';
+                statusIcon.innerHTML = '✅';
+                statusTitle.textContent = 'Test Exitoso';
+                statusTitle.className = 'text-lg font-semibold text-green-800';
+                statusMessage.textContent = 'La API respondió correctamente';
+                statusMessage.className = 'text-sm text-green-600';
+                
+                // Update metrics
+                document.getElementById('responseCode').textContent = result.data?.status_code || '200';
+                document.getElementById('responseTime').textContent = (result.data?.response_time_ms || 0) + 'ms';
+                document.getElementById('recordCount').textContent = result.data?.sample_data?.length || '0';
+                
+                // Show sample data
+                if (result.data?.sample_data) {
+                    document.getElementById('sampleData').textContent = 
+                        JSON.stringify(result.data.sample_data, null, 2);
+                }
+                
+                // Show detected fields
+                if (result.data?.detected_fields) {
+                    const fieldsContainer = document.getElementById('detectedFields');
+                    fieldsContainer.innerHTML = result.data.detected_fields.map(field => 
+                        `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">${field}</span>`
+                    ).join('');
+                }
+                
+            } else {
+                statusDiv.className = 'p-4 rounded-lg bg-red-50 border border-red-200';
+                statusIcon.innerHTML = '❌';
+                statusTitle.textContent = 'Test Fallido';
+                statusTitle.className = 'text-lg font-semibold text-red-800';
+                statusMessage.textContent = result.error || 'Error desconocido';
+                statusMessage.className = 'text-sm text-red-600';
+                
+                // Clear metrics
+                document.getElementById('responseCode').textContent = '-';
+                document.getElementById('responseTime').textContent = '-';
+                document.getElementById('recordCount').textContent = '-';
+                document.getElementById('sampleData').textContent = 'No hay datos disponibles';
+                document.getElementById('detectedFields').innerHTML = '';
+            }
+        }
+
+        function updateTestHistory() {
+            const historyContainer = document.getElementById('testHistory');
+            
+            if (testHistory.length === 0) {
+                historyContainer.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-history text-3xl mb-2"></i>
+                        <p>No hay tests realizados aún</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            historyContainer.innerHTML = testHistory.slice(0, 10).map(test => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex-1">
+                        <p class="font-mono text-sm text-gray-700">${test.url}</p>
+                        <p class="text-xs text-gray-500">${new Date(test.timestamp).toLocaleString()}</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm ${test.success ? 'text-green-600' : 'text-red-600'}">
+                            ${test.success ? '✅' : '❌'}
+                        </span>
+                        ${test.response_time_ms ? `<span class="text-sm text-gray-600">${test.response_time_ms}ms</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveAsAPI() {
+            const formData = new FormData(document.getElementById('testForm'));
+            const params = new URLSearchParams();
+            
+            // Pre-fill wizard with current data
+            for (const [key, value] of formData.entries()) {
+                params.append(key, value);
+            }
+            
+            window.location.href = `/api-management/wizard?${params.toString()}`;
+        }
+
+        function copyConfig() {
+            const config = {
+                base_url: document.getElementById('baseUrl').value,
+                endpoint: document.getElementById('endpoint').value,
+                method: document.getElementById('method').value
+            };
+            
+            navigator.clipboard.writeText(JSON.stringify(config, null, 2))
+                .then(() => alert('✅ Configuración copiada al portapapeles'))
+                .catch(() => alert('❌ Error copiando configuración'));
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('baseUrl').addEventListener('input', updateUrlPreview);
+            document.getElementById('endpoint').addEventListener('input', updateUrlPreview);
+            
+            // Load default template
+            loadTemplate('jsonplaceholder');
+        });
+    </script>
+
+</body>
+</html>

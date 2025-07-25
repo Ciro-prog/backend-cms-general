@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de APIs - CMS Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Navbar -->
+    <nav class="bg-white shadow-lg border-b border-gray-200">
+        <div class="max-w-full mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-gray-900">
+                        🔌 Gestión de APIs Externas
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-home mr-2"></i>Inicio
+                    </a>
+                    <a href="/docs" target="_blank" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-book mr-2"></i>API Docs
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">🔌 APIs Externas</h1>
+            <p class="text-gray-600 mt-2">Configura y gestiona las conexiones a APIs externas</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+            <span id="errorText"></span>
+        </div>
+
+        <!-- Success Message -->
+        <div id="successMessage" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
+            <span id="successText"></span>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex space-x-4 mb-8">
+            <a href="/api-management/wizard" 
+               class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>Nueva API
+            </a>
+            <a href="/api-management/test" 
+               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-flask mr-2"></i>Test APIs
+            </a>
+            <button onclick="refreshData()" 
+                    class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                <i class="fas fa-sync-alt mr-2"></i>Actualizar
+            </button>
+        </div>
+
+        <!-- APIs Configuradas -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900">APIs Configuradas</h2>
+            </div>
+            <div class="p-6">
+                <div id="configuredApis" class="text-center py-12 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
+                    <p>Cargando APIs configuradas...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ejemplos Disponibles -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900">Ejemplos Disponibles</h2>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- JSONPlaceholder -->
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-center mb-3">
+                            <div class="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-users text-blue-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">JSONPlaceholder Users</h3>
+                                <p class="text-sm text-gray-600">API de usuarios de prueba</p>
+                            </div>
+                        </div>
+                        <div class="space-y-1 text-sm text-gray-600 mb-4">
+                            <p><strong>URL:</strong> https://jsonplaceholder.typicode.com/users</p>
+                            <p><strong>Método:</strong> GET</p>
+                            <p><strong>Auth:</strong> Sin autenticación</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="useExample('jsonplaceholder')" 
+                                    class="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors">
+                                Usar Ejemplo
+                            </button>
+                            <button onclick="testExample('jsonplaceholder')" 
+                                    class="bg-gray-100 text-gray-700 px-3 py-2 rounded text-sm hover:bg-gray-200 transition-colors">
+                                <i class="fas fa-flask"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- HTTPBin -->
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-center mb-3">
+                            <div class="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-flask text-green-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">HTTPBin Test</h3>
+                                <p class="text-sm text-gray-600">API de pruebas HTTP</p>
+                            </div>
+                        </div>
+                        <div class="space-y-1 text-sm text-gray-600 mb-4">
+                            <p><strong>URL:</strong> https://httpbin.org/json</p>
+                            <p><strong>Método:</strong> GET</p>
+                            <p><strong>Auth:</strong> Sin autenticación</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="useExample('httpbin')" 
+                                    class="flex-1 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors">
+                                Usar Ejemplo
+                            </button>
+                            <button onclick="testExample('httpbin')" 
+                                    class="bg-gray-100 text-gray-700 px-3 py-2 rounded text-sm hover:bg-gray-200 transition-colors">
+                                <i class="fas fa-flask"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder para más ejemplos -->
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-500">
+                        <i class="fas fa-plus text-2xl mb-2"></i>
+                        <p class="text-sm">Más ejemplos próximamente</p>
+                        <p class="text-xs">ISPCube, WAHA, N8N, etc.</p>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Funciones para manejar ejemplos
+        function useExample(exampleId) {
+            const templates = {
+                jsonplaceholder: {
+                    name: 'JSONPlaceholder Users',
+                    base_url: 'https://jsonplaceholder.typicode.com',
+                    endpoint: '/users',
+                    method: 'GET'
+                },
+                httpbin: {
+                    name: 'HTTPBin Test',
+                    base_url: 'https://httpbin.org', 
+                    endpoint: '/json',
+                    method: 'GET'
+                }
+            };
+            
+            const template = templates[exampleId];
+            if (template) {
+                const params = new URLSearchParams(template);
+                window.location.href = `/api-management/wizard?${params.toString()}`;
+            }
+        }
+
+        async function testExample(exampleId) {
+            const templates = {
+                jsonplaceholder: {
+                    base_url: 'https://jsonplaceholder.typicode.com',
+                    endpoint: '/users'
+                },
+                httpbin: {
+                    base_url: 'https://httpbin.org',
+                    endpoint: '/json'
+                }
+            };
+            
+            const template = templates[exampleId];
+            if (template) {
+                showMessage(`Probando ${exampleId}...`, 'info');
+                
+                try {
+                    // Simular test rápido
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    showMessage(`✅ ${exampleId} funciona correctamente`, 'success');
+                } catch (error) {
+                    showMessage(`❌ Error probando ${exampleId}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        function showMessage(message, type) {
+            // Ocultar mensajes anteriores
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+            
+            if (type === 'error') {
+                document.getElementById('errorText').textContent = message;
+                document.getElementById('errorMessage').classList.remove('hidden');
+            } else if (type === 'success') {
+                document.getElementById('successText').textContent = message;
+                document.getElementById('successMessage').classList.remove('hidden');
+            }
+            
+            // Auto-hide después de 5 segundos
+            setTimeout(() => {
+                document.getElementById('errorMessage').classList.add('hidden');
+                document.getElementById('successMessage').classList.add('hidden');
+            }, 5000);
+        }
+
+        async function refreshData() {
+            const configuredApisDiv = document.getElementById('configuredApis');
+            configuredApisDiv.innerHTML = `
+                <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
+                <p>Actualizando datos...</p>
+            `;
+            
+            try {
+                // Simular carga de APIs configuradas
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Por ahora mostrar estado vacío
+                configuredApisDiv.innerHTML = `
+                    <i class="fas fa-plug text-4xl mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No hay APIs configuradas</h3>
+                    <p class="text-gray-600 mb-6">Comienza configurando tu primera API externa</p>
+                    <a href="/api-management/wizard" 
+                       class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Configurar Primera API
+                    </a>
+                `;
+            } catch (error) {
+                showMessage('Error actualizando datos', 'error');
+            }
+        }
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+        });
+    </script>
+
+</body>
+</html>

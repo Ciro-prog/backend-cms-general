@@ -56,55 +56,19 @@ from .config import settings
 # ================================
 
 def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
-    """Obtener usuario actual de la sesión - VERSIÓN ROBUSTA"""
-    
-    # Debugging completo
-    logger.info(f"🔍 DEBUG - get_current_user llamado para: {request.url}")
-    
-    # Verificar si request tiene session
-    if not hasattr(request, 'session'):
-        logger.error("❌ DEBUG - request NO tiene atributo 'session'")
-        return None
-    
-    # Verificar contenido de session
-    session = request.session
-    logger.info(f"🔍 DEBUG - Session contents: {dict(session)}")
-    
-    # Verificar si hay usuario (prioritario)
-    user = session.get("user")
-    if not user:
-        logger.warning("⚠️ DEBUG - No hay usuario en la sesión")
-        return None
-    
-    # Verificar authenticated (secundario - puede faltar)
-    authenticated = session.get("authenticated", False)
-    logger.info(f"🔍 DEBUG - authenticated = {authenticated}")
-    
-    # Si hay usuario válido pero no está marcado como authenticated, marcarlo
-    if user and not authenticated:
-        logger.warning("⚠️ DEBUG - Usuario existe pero authenticated=False - ARREGLANDO")
-        session["authenticated"] = True
-        session.update({"authenticated": True})
-        logger.info("✅ DEBUG - authenticated establecido a True automáticamente")
-    
-    logger.info(f"✅ DEBUG - Usuario encontrado: {user.get('username', 'unknown')}")
-    return user
+    """Obtener usuario actual de la sesión"""
+    if hasattr(request, 'session') and request.session.get("authenticated"):
+        return request.session.get("user")
+    return None
 
 def require_auth(request: Request) -> Dict[str, Any]:
-    """Requerir autenticación - lanza excepción si no está logueado - CON DEBUGGING"""
-    
-    logger.info(f"🔍 DEBUG - require_auth llamado para: {request.url}")
-    
+    """Requerir autenticación - lanza excepción si no está logueado"""
     user = get_current_user(request)
-    
     if not user:
-        logger.error(f"❌ DEBUG - require_auth FALLÓ - no hay usuario válido para {request.url}")
         raise HTTPException(
             status_code=401,
             detail="Autenticación requerida"
         )
-    
-    logger.info(f"✅ DEBUG - require_auth EXITOSO - usuario: {user.get('username')}")
     return user
 
 def require_admin(request: Request) -> Dict[str, Any]:
@@ -197,10 +161,7 @@ app = FastAPI(
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SECRET_KEY", "cms-dinamico-secret-key-change-in-production"),
-    max_age=86400,  # 24 horas
-    same_site="lax",  # Permitir cookies cross-site para misma aplicación
-    https_only=False  # False para desarrollo local
+    secret_key=os.getenv("SECRET_KEY", "cms-dinamico-secret-key-change-in-production")
 )
 app.add_middleware(
     CORSMiddleware,
@@ -403,10 +364,10 @@ async def api_test_page(request: Request):
 
 @app.post("/api-management/test-connection")
 async def test_api_connection_ajax(request: Request):
-    """Test de conexión a API externa - CORREGIDO"""
     try:
         form = await request.form()
         config_data = {
+            "api_id": form.get("api_id", "temp_test"),
             "business_id": form.get("business_id", "test"),
             "name": form.get("name", "Test API"),
             "base_url": form.get("base_url", ""),
@@ -414,103 +375,42 @@ async def test_api_connection_ajax(request: Request):
             "method": form.get("method", "GET"),
             "auth_type": form.get("auth_type", "none")
         }
-        
-        # Test directo con httpx
-        import httpx
-        import time
-        
-        # Construir URL completa
-        base_url = config_data["base_url"].rstrip('/')
-        endpoint = config_data["endpoint"].lstrip('/')
-        if not endpoint.startswith('/'):
-            endpoint = '/' + endpoint
-        full_url = base_url + endpoint
-        
-        logger.info(f"🧪 Probando conexión a: {full_url}")
-        
-        # Realizar petición
-        start_time = time.time()
-        
         try:
+            from .services.api_service import ApiService
+            from .models.api_config import ApiConfiguration
+            config = ApiConfiguration(**config_data)
+            api_service = ApiService()
+            result = await api_service.test_api_connection(
+                config.business_id, 
+                config.api_id,
+                limit_records=5
+            )
+            return {
+                "success": result.success,
+                "data": {
+                    "status_code": result.status_code,
+                    "response_time_ms": result.response_time_ms,
+                    "sample_data": result.sample_data,
+                    "detected_fields": result.detected_fields,
+                    "error_message": result.error_message
+                }
+            }
+        except ImportError:
+            logger.warning("ApiService no disponible, usando test simulado")
+            import httpx
+            full_url = config_data["base_url"] + config_data["endpoint"]
             async with httpx.AsyncClient(timeout=10) as client:
-                if config_data["method"].upper() == "GET":
-                    response = await client.get(full_url)
-                elif config_data["method"].upper() == "POST":
-                    response = await client.post(full_url)
-                else:
-                    response = await client.request(config_data["method"].upper(), full_url)
-            
-            response_time = (time.time() - start_time) * 1000
-            
-            # Procesar respuesta
-            if response.status_code == 200:
-                try:
-                    json_data = response.json()
-                    
-                    # Detectar estructura de datos
-                    if isinstance(json_data, dict):
-                        detected_fields = list(json_data.keys())
-                        sample_data = [json_data]  # Convertir a lista para consistencia
-                    elif isinstance(json_data, list) and len(json_data) > 0:
-                        detected_fields = list(json_data[0].keys()) if json_data[0] else []
-                        sample_data = json_data[:5]  # Primeros 5 elementos
-                    else:
-                        detected_fields = []
-                        sample_data = json_data
-                    
-                    return {
-                        "success": True,
-                        "data": {
-                            "status_code": response.status_code,
-                            "response_time_ms": round(response_time, 2),
-                            "sample_data": sample_data,
-                            "detected_fields": detected_fields,
-                            "total_records": len(sample_data) if isinstance(sample_data, list) else 1,
-                            "data_type": type(json_data).__name__,
-                            "error_message": None
-                        }
-                    }
-                except Exception as json_error:
-                    return {
-                        "success": False,
-                        "data": {
-                            "status_code": response.status_code,
-                            "response_time_ms": round(response_time, 2),
-                            "error_message": f"Respuesta no es JSON válido: {str(json_error)}",
-                            "raw_content": response.text[:200] + "..." if len(response.text) > 200 else response.text
-                        }
-                    }
-            else:
-                return {
-                    "success": False,
-                    "data": {
-                        "status_code": response.status_code,
-                        "response_time_ms": round(response_time, 2),
-                        "error_message": f"HTTP {response.status_code}: {response.text[:100]}",
-                        "sample_data": None,
-                        "detected_fields": []
-                    }
-                }
-                
-        except httpx.TimeoutException:
+                response = await client.get(full_url)
             return {
-                "success": False,
+                "success": response.status_code == 200,
                 "data": {
-                    "error_message": "Timeout - La API no respondió en 10 segundos",
-                    "status_code": None,
-                    "response_time_ms": None
+                    "status_code": response.status_code,
+                    "response_time_ms": 100,
+                    "sample_data": response.json() if response.status_code == 200 else None,
+                    "detected_fields": list(response.json().keys()) if response.status_code == 200 and isinstance(response.json(), dict) else [],
+                    "error_message": None if response.status_code == 200 else f"HTTP {response.status_code}"
                 }
             }
-        except httpx.RequestError as e:
-            return {
-                "success": False,
-                "data": {
-                    "error_message": f"Error de conexión: {str(e)}",
-                    "status_code": None,
-                    "response_time_ms": None
-                }
-            }
-            
     except Exception as e:
         logger.error(f"Error probando API: {e}")
         return {
@@ -875,14 +775,12 @@ except Exception as e:
     logger.warning(f"⚠️ Router auth no disponible: {e}")
 
 # Incluir routers de frontend para vistas HTML de business types y businesses
-# TEMPORALMENTE DESHABILITADO PARA EVITAR CONFLICTOS DE LOGIN
-# try:
-#     from .frontend.routers import frontend_router
-#     app.include_router(frontend_router, tags=["frontend"])
-#     logger.info("✅ Frontend router (business types/businesses) incluido")
-# except Exception as e:
-#     logger.warning(f"⚠️ Frontend router no disponible: {e}")
-logger.info("🔧 Frontend router temporalmente deshabilitado para evitar conflictos de login")
+try:
+    from .frontend.routers import frontend_router
+    app.include_router(frontend_router, tags=["frontend"])
+    logger.info("✅ Frontend router (business types/businesses) incluido")
+except Exception as e:
+    logger.warning(f"⚠️ Frontend router no disponible: {e}")
 
 # Incluir router admin de frontend para field mapping
 try:
@@ -922,12 +820,6 @@ async def login_post(request: Request, username: str = Form(...), password: str 
         request.session["user"] = user_data
         request.session["authenticated"] = True
         
-        # FORZAR la sesión a guardarse - CRÍTICO
-        request.session.update({"authenticated": True})
-        
-        # DEBUG - Verificar que la sesión se guardó correctamente
-        logger.info(f"🔍 DEBUG LOGIN - Session después de login: {dict(request.session)}")
-        logger.info(f"✅ DEBUG LOGIN - authenticated = {request.session.get('authenticated')}")
         logger.info(f"✅ Usuario {username} logueado exitosamente")
         
         response = RedirectResponse(url="/dashboard", status_code=302)
@@ -946,10 +838,6 @@ async def dashboard(request: Request):
     
     # Verificar autenticación
     user = require_auth(request)
-    
-    # DEBUG - Información adicional
-    logger.info(f"🔍 DEBUG DASHBOARD - Usuario accediendo: {user.get('username', 'unknown')}")
-    logger.info(f"🔍 DEBUG DASHBOARD - Rol del usuario: {user.get('role', 'unknown')}")
     # Obtener info del sistema (usa health_check y/o app_info)
     try:
         system_info = await health_check()
@@ -1060,65 +948,6 @@ async def root(request: Request):
 # ... existing code ...
 # (Por espacio, aquí irían los endpoints del configurador de entidades, como en main_problematic.py)
 # ... existing code ...
-
-
-
-@app.get("/test-login")
-async def test_login(request: Request):
-    """Endpoint para hacer login automático de prueba"""
-    
-    # Login automático como superadmin
-    user_data = {
-        "username": "superadmin",
-        "role": "super_admin",
-        "business_id": None,
-        "name": "Super Admin",
-        "email": "superadmin@demo.com"
-    }
-    
-    # Limpiar sesión primero
-    request.session.clear()
-    
-    # Establecer datos de usuario
-    request.session["user"] = user_data
-    request.session["authenticated"] = True
-    
-    # Forzar actualización
-    request.session.update({"authenticated": True})
-    
-    logger.info(f"🧪 TEST LOGIN - Session después de login automático: {dict(request.session)}")
-    
-    return {
-        "message": "Login automático completado",
-        "user": user_data,
-        "session_contents": dict(request.session),
-        "authenticated": request.session.get("authenticated"),
-        "next_steps": [
-            "Ve a /dashboard",
-            "Luego ve a /api-management",
-            "Deberían funcionar ambos"
-        ]
-    }
-
-@app.get("/test-session")
-async def test_session(request: Request):
-    """Endpoint para debuggear sesiones"""
-    
-    session_info = {
-        "has_session": hasattr(request, 'session'),
-        "session_contents": dict(request.session) if hasattr(request, 'session') else None,
-        "authenticated": request.session.get("authenticated", False) if hasattr(request, 'session') else False,
-        "user": request.session.get("user") if hasattr(request, 'session') else None,
-        "current_user_result": get_current_user(request)
-    }
-    
-    logger.info(f"🧪 SESSION TEST: {session_info}")
-    
-    return {
-        "message": "Test de sesión",
-        "session_info": session_info,
-        "timestamp": datetime.utcnow().isoformat()
-    }
 
 # ================================
 # LOG FINAL

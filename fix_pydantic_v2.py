@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # ================================
-# fix_main_py_auth_issues.py - ARREGLAR PROBLEMAS DE AUTENTICACIÓN
+# fix_syntax_error.py - ARREGLAR ERROR DE SINTAXIS
 # ================================
 
 from pathlib import Path
 from datetime import datetime
-import re
 
-def fix_main_py_authentication():
-    """Arreglar todos los problemas de autenticación en main.py"""
+def fix_syntax_error_in_main():
+    """Arreglar el error de sintaxis en main.py"""
     
     main_file = Path("app/main.py")
     
@@ -16,293 +15,239 @@ def fix_main_py_authentication():
         print("❌ main.py no existe")
         return
     
-    print("🔧 Arreglando problemas de autenticación en main.py...")
+    print("🔧 Arreglando error de sintaxis en main.py...")
     
     # Backup
     timestamp = datetime.now().strftime("%H%M%S")
-    backup_path = main_file.with_suffix(f'.backup_final_{timestamp}.py')
-    backup_path.write_text(main_file.read_text(encoding='utf-8'), encoding='utf-8')
-    print(f"✅ Backup: {backup_path.name}")
+    backup_path = main_file.with_suffix(f'.backup_syntax_{timestamp}.py')
     
-    content = main_file.read_text(encoding='utf-8')
+    try:
+        content = main_file.read_text(encoding='utf-8')
+        backup_path.write_text(content, encoding='utf-8')
+        print(f"✅ Backup: {backup_path.name}")
+    except Exception as e:
+        print(f"❌ Error leyendo archivo: {e}")
+        return
     
-    # ================================
-    # 1. ARREGLAR ENDPOINT RAÍZ DUPLICADO
-    # ================================
+    # El problema está en que el endpoint test-connection tiene un try sin except
+    # Vamos a recrear ese endpoint completo y correcto
     
-    # Remover el primer @app.get("/") que devuelve JSON
-    first_root_pattern = r'@app\.get\("/"\)\s*\nasync def root\(\):\s*\n\s*return\s*\{[^}]*"message":\s*"CMS Dinámico API"[^}]*\}'
+    # Buscar el endpoint problemático y reemplazarlo completamente
+    lines = content.split('\n')
+    new_lines = []
+    skip_lines = False
+    found_test_connection = False
     
-    if re.search(first_root_pattern, content, re.DOTALL):
-        content = re.sub(first_root_pattern, '', content, flags=re.DOTALL)
-        print("✅ Primer endpoint raíz (JSON) eliminado")
+    for i, line in enumerate(lines):
+        # Detectar inicio del endpoint problemático
+        if '@app.post("/api-management/test-connection")' in line:
+            found_test_connection = True
+            skip_lines = True
+            # Agregar el endpoint corregido completo
+            new_lines.extend([
+                '@app.post("/api-management/test-connection")',
+                'async def test_api_connection_ajax(request: Request):',
+                '    """Test de conexión a API externa - CORREGIDO"""',
+                '    try:',
+                '        form = await request.form()',
+                '        config_data = {',
+                '            "business_id": form.get("business_id", "test"),',
+                '            "name": form.get("name", "Test API"),',
+                '            "base_url": form.get("base_url", ""),',
+                '            "endpoint": form.get("endpoint", ""),',
+                '            "method": form.get("method", "GET"),',
+                '            "auth_type": form.get("auth_type", "none")',
+                '        }',
+                '        ',
+                '        # Test directo con httpx',
+                '        import httpx',
+                '        import time',
+                '        ',
+                '        # Construir URL completa',
+                '        base_url = config_data["base_url"].rstrip(\'/\')',
+                '        endpoint = config_data["endpoint"].lstrip(\'/\')',
+                '        if not endpoint.startswith(\'/\'):',
+                '            endpoint = \'/\' + endpoint',
+                '        full_url = base_url + endpoint',
+                '        ',
+                '        logger.info(f"🧪 Probando conexión a: {full_url}")',
+                '        ',
+                '        # Realizar petición',
+                '        start_time = time.time()',
+                '        ',
+                '        try:',
+                '            async with httpx.AsyncClient(timeout=10) as client:',
+                '                if config_data["method"].upper() == "GET":',
+                '                    response = await client.get(full_url)',
+                '                elif config_data["method"].upper() == "POST":',
+                '                    response = await client.post(full_url)',
+                '                else:',
+                '                    response = await client.request(config_data["method"].upper(), full_url)',
+                '            ',
+                '            response_time = (time.time() - start_time) * 1000',
+                '            ',
+                '            # Procesar respuesta',
+                '            if response.status_code == 200:',
+                '                try:',
+                '                    json_data = response.json()',
+                '                    ',
+                '                    # Detectar estructura de datos',
+                '                    if isinstance(json_data, dict):',
+                '                        detected_fields = list(json_data.keys())',
+                '                        sample_data = [json_data]  # Convertir a lista para consistencia',
+                '                    elif isinstance(json_data, list) and len(json_data) > 0:',
+                '                        detected_fields = list(json_data[0].keys()) if json_data[0] else []',
+                '                        sample_data = json_data[:5]  # Primeros 5 elementos',
+                '                    else:',
+                '                        detected_fields = []',
+                '                        sample_data = json_data',
+                '                    ',
+                '                    return {',
+                '                        "success": True,',
+                '                        "data": {',
+                '                            "status_code": response.status_code,',
+                '                            "response_time_ms": round(response_time, 2),',
+                '                            "sample_data": sample_data,',
+                '                            "detected_fields": detected_fields,',
+                '                            "total_records": len(sample_data) if isinstance(sample_data, list) else 1,',
+                '                            "data_type": type(json_data).__name__,',
+                '                            "error_message": None',
+                '                        }',
+                '                    }',
+                '                except Exception as json_error:',
+                '                    return {',
+                '                        "success": False,',
+                '                        "data": {',
+                '                            "status_code": response.status_code,',
+                '                            "response_time_ms": round(response_time, 2),',
+                '                            "error_message": f"Respuesta no es JSON válido: {str(json_error)}",',
+                '                            "raw_content": response.text[:200] + "..." if len(response.text) > 200 else response.text',
+                '                        }',
+                '                    }',
+                '            else:',
+                '                return {',
+                '                    "success": False,',
+                '                    "data": {',
+                '                        "status_code": response.status_code,',
+                '                        "response_time_ms": round(response_time, 2),',
+                '                        "error_message": f"HTTP {response.status_code}: {response.text[:100]}",',
+                '                        "sample_data": None,',
+                '                        "detected_fields": []',
+                '                    }',
+                '                }',
+                '                ',
+                '        except httpx.TimeoutException:',
+                '            return {',
+                '                "success": False,',
+                '                "data": {',
+                '                    "error_message": "Timeout - La API no respondió en 10 segundos",',
+                '                    "status_code": None,',
+                '                    "response_time_ms": None',
+                '                }',
+                '            }',
+                '        except httpx.RequestError as e:',
+                '            return {',
+                '                "success": False,',
+                '                "data": {',
+                '                    "error_message": f"Error de conexión: {str(e)}",',
+                '                    "status_code": None,',
+                '                    "response_time_ms": None',
+                '                }',
+                '            }',
+                '            ',
+                '    except Exception as e:',
+                '        logger.error(f"Error probando API: {e}")',
+                '        return {',
+                '            "success": False,',
+                '            "error": str(e)',
+                '        }',
+                ''
+            ])
+            continue
+        
+        # Detectar fin del endpoint problemático
+        if skip_lines and line.startswith('@app.') and 'test-connection' not in line:
+            skip_lines = False
+            new_lines.append(line)
+            continue
+        
+        # Si no estamos saltando líneas, agregar línea normal
+        if not skip_lines:
+            new_lines.append(line)
     
-    # ================================
-    # 2. CREAR FUNCIÓN DE VERIFICACIÓN DE AUTH
-    # ================================
-    
-    auth_function = '''
-# ================================
-# FUNCIONES DE AUTENTICACIÓN
-# ================================
-
-def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
-    """Obtener usuario actual de la sesión"""
-    if hasattr(request, 'session') and request.session.get("authenticated"):
-        return request.session.get("user")
-    return None
-
-def require_auth(request: Request) -> Dict[str, Any]:
-    """Requerir autenticación - lanza excepción si no está logueado"""
-    user = get_current_user(request)
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Autenticación requerida"
-        )
-    return user
-
-def require_admin(request: Request) -> Dict[str, Any]:
-    """Requerir rol admin o superior"""
-    user = require_auth(request)
-    if user["role"] not in ["admin", "super_admin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Permisos de administrador requeridos"
-        )
-    return user
-'''
-    
-    # Buscar dónde insertar las funciones de auth (después de los imports)
-    insert_point = content.find("# ================================\n# MODELOS PYDANTIC\n# ================================")
-    if insert_point != -1:
-        content = content[:insert_point] + auth_function + "\n" + content[insert_point:]
-        print("✅ Funciones de autenticación agregadas")
-    
-    # ================================
-    # 3. ARREGLAR ENDPOINT RAÍZ FINAL
-    # ================================
-    
-    # Buscar el @app.get("/", include_in_schema=False) y reemplazarlo
-    root_redirect_pattern = r'@app\.get\("/", include_in_schema=False\)\s*\nasync def root_redirect\(\):\s*\n\s*return RedirectResponse\(url="/login", status_code=302\)'
-    
-    new_root_endpoint = '''@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    """Página principal - redirige según autenticación"""
-    
-    user = get_current_user(request)
-    
-    if user:
-        # Usuario logueado - ir al dashboard
-        logger.info(f"🏠 Usuario {user['username']} accedió a página principal - redirigiendo a dashboard")
-        return RedirectResponse(url="/dashboard", status_code=302)
+    if found_test_connection:
+        print("✅ Endpoint test-connection reemplazado completamente")
     else:
-        # Usuario no logueado - mostrar página de bienvenida
-        logger.info("🏠 Usuario anónimo accedió a página principal - mostrando página de bienvenida")
-        
-        # Obtener información del sistema
-        try:
-            db = get_database()
-            system_info = {
-                "status": "running",
-                "version": "1.0.0",
-                "timestamp": datetime.utcnow().isoformat(),
-                "total_businesses": await db.business_instances.count_documents({}),
-                "active_apis": await db.api_configurations.count_documents({"active": True})
-            }
-        except Exception as e:
-            logger.error(f"Error obteniendo info del sistema: {e}")
-            system_info = {
-                "status": "running",
-                "version": "1.0.0", 
-                "timestamp": datetime.utcnow().isoformat(),
-                "error": "Error conectando a base de datos"
-            }
-        
-        return templates.TemplateResponse("home.html", {
-            "request": request,
-            "system_info": system_info
-        })'''
+        print("⚠️ No se encontró el endpoint test-connection problemático")
     
-    if re.search(root_redirect_pattern, content, re.DOTALL):
-        content = re.sub(root_redirect_pattern, new_root_endpoint, content, flags=re.DOTALL)
-        print("✅ Endpoint raíz arreglado")
-    
-    # ================================
-    # 4. PROTEGER DASHBOARD
-    # ================================
-    
-    # Buscar el endpoint dashboard y agregar verificación de auth
-    dashboard_pattern = r'(@app\.get\("/dashboard", response_class=HTMLResponse\)\s*\nasync def dashboard\(request: Request\):)'
-    
-    if re.search(dashboard_pattern, content):
-        dashboard_replacement = r'\1\n    """Dashboard principal - requiere autenticación"""\n    \n    # Verificar autenticación\n    user = require_auth(request)'
-        content = re.sub(dashboard_pattern, dashboard_replacement, content)
-        print("✅ Dashboard protegido con autenticación")
-        
-        # También actualizar el dashboard para usar el usuario real
-        content = content.replace(
-            'current_user = {\n        "name": "Super Admin",\n        "role": "super_admin",\n        "username": "superadmin",\n        "business_id": "isp_telconorte"\n    }',
-            'current_user = user'
-        )
-        print("✅ Dashboard usando usuario real de sesión")
-    
-    # ================================
-    # 5. PROTEGER RUTAS DE GESTIÓN
-    # ================================
-    
-    # Proteger /api-management
-    api_mgmt_pattern = r'(@app\.get\("/api-management", response_class=HTMLResponse\)\s*\nasync def api_management\(request: Request\):)'
-    if re.search(api_mgmt_pattern, content):
-        api_mgmt_replacement = r'\1\n    """Gestión de APIs - requiere admin"""\n    user = require_admin(request)\n'
-        content = re.sub(api_mgmt_pattern, api_mgmt_replacement, content)
-        print("✅ /api-management protegido")
-    
-    # Proteger /api-management/wizard  
-    wizard_pattern = r'(@app\.get\("/api-management/wizard", response_class=HTMLResponse\)\s*\nasync def api_wizard\(request: Request\):)'
-    if re.search(wizard_pattern, content):
-        wizard_replacement = r'\1\n    """Wizard de APIs - requiere admin"""\n    user = require_admin(request)\n'
-        content = re.sub(wizard_pattern, wizard_replacement, content)
-        print("✅ /api-management/wizard protegido")
-    
-    # Proteger /api-management/test
-    test_pattern = r'(@app\.get\("/api-management/test", response_class=HTMLResponse\)\s*\nasync def api_test_page\(request: Request\):)'
-    if re.search(test_pattern, content):
-        test_replacement = r'\1\n    """Test de APIs - requiere admin"""\n    user = require_admin(request)\n'
-        content = re.sub(test_pattern, test_replacement, content)
-        print("✅ /api-management/test protegido")
-    
-    # ================================
-    # 6. AGREGAR LOGOUT FUNCIONAL
-    # ================================
-    
-    logout_pattern = r'@app\.post\("/logout"\)\s*\nasync def logout\(\):\s*\n\s*return RedirectResponse\(url="/login", status_code=302\)'
-    
-    new_logout = '''@app.post("/logout")
-async def logout(request: Request):
-    """Cerrar sesión"""
-    user = get_current_user(request)
-    
-    if user:
-        logger.info(f"👋 Usuario {user['username']} cerró sesión")
-    
-    # Limpiar sesión
-    request.session.clear()
-    
-    return RedirectResponse(url="/login", status_code=302)'''
-    
-    if re.search(logout_pattern, content, re.DOTALL):
-        content = re.sub(logout_pattern, new_logout, content, flags=re.DOTALL)
-        print("✅ Logout funcional agregado")
-    
-    # ================================
-    # 7. AGREGAR IMPORTS NECESARIOS
-    # ================================
-    
-    # Verificar si tiene los imports necesarios
-    if 'from typing import Dict, Any, List, Optional' not in content:
-        # Buscar línea de imports de typing y agregar lo que falta
-        typing_pattern = r'from typing import ([^\\n]+)'
-        if re.search(typing_pattern, content):
-            content = re.sub(
-                typing_pattern, 
-                'from typing import Dict, Any, List, Optional', 
-                content
-            )
-            print("✅ Imports de typing actualizados")
-    
-    # ================================
-    # 8. ESCRIBIR ARCHIVO ARREGLADO
-    # ================================
-    
-    main_file.write_text(content, encoding='utf-8')
-    print(f"✅ {main_file} actualizado con autenticación completa")
+    # Escribir archivo corregido
+    try:
+        corrected_content = '\n'.join(new_lines)
+        main_file.write_text(corrected_content, encoding='utf-8')
+        print(f"✅ Archivo main.py corregido")
+    except Exception as e:
+        print(f"❌ Error escribiendo archivo: {e}")
 
-def test_endpoints():
-    """Mostrar URLs para probar"""
+def verify_syntax():
+    """Verificar que no hay errores de sintaxis"""
     
-    print(f"\n🧪 ENDPOINTS PARA PROBAR:")
-    print(f"")
-    print(f"📍 PÚBLICOS:")
-    print(f"   🏠 http://localhost:8000/ - Página principal (redirige según auth)")
-    print(f"   🔑 http://localhost:8000/login - Login")
-    print(f"   📚 http://localhost:8000/docs - Documentación API")
-    print(f"   ❤️ http://localhost:8000/health - Estado del sistema")
-    print(f"")
-    print(f"🔐 REQUIEREN LOGIN:")
-    print(f"   📊 http://localhost:8000/dashboard - Dashboard (cualquier usuario)")
-    print(f"")
-    print(f"👑 REQUIEREN ADMIN:")
-    print(f"   ⚙️ http://localhost:8000/api-management - Gestión de APIs")
-    print(f"   🧙 http://localhost:8000/api-management/wizard - Wizard de APIs")
-    print(f"   🧪 http://localhost:8000/api-management/test - Test de APIs")
-    print(f"")
-    print(f"🔑 CREDENCIALES DE PRUEBA:")
-    print(f"   superadmin / superadmin (Super Admin)")
-    print(f"   admin / admin (Admin)")
-    print(f"   usuario / usuario (User)")
-
-def verify_templates():
-    """Verificar que existen los templates necesarios"""
+    print("\n🔍 Verificando sintaxis...")
     
-    templates_dir = Path("app/frontend/templates")
-    
-    required_templates = [
-        "home.html",
-        "auth/login.html", 
-        "dashboard.html",
-        "dashboard_with_permissions.html"
-    ]
-    
-    print(f"\n🔍 Verificando templates:")
-    
-    all_exist = True
-    for template in required_templates:
-        template_path = templates_dir / template
-        if template_path.exists():
-            print(f"   ✅ {template}")
-        else:
-            print(f"   ❌ {template} (FALTA)")
-            all_exist = False
-    
-    return all_exist
+    try:
+        import ast
+        main_file = Path("app/main.py")
+        
+        with open(main_file, 'r', encoding='utf-8') as f:
+            source = f.read()
+        
+        # Intentar compilar el código
+        ast.parse(source)
+        print("✅ Sintaxis correcta - no hay errores")
+        return True
+        
+    except SyntaxError as e:
+        print(f"❌ Error de sintaxis encontrado:")
+        print(f"   Línea {e.lineno}: {e.text}")
+        print(f"   Error: {e.msg}")
+        return False
+    except Exception as e:
+        print(f"❌ Error verificando sintaxis: {e}")
+        return False
 
 def main():
     """Función principal"""
-    print("🔧 ARREGLANDO PROBLEMAS DE AUTENTICACIÓN EN MAIN.PY")
-    print("=" * 60)
+    print("🔧 ARREGLANDO ERROR DE SINTAXIS EN MAIN.PY")
+    print("=" * 50)
     
-    # 1. Verificar templates
-    templates_ok = verify_templates()
+    print("🎯 Error identificado:")
+    print("   ❌ SyntaxError: expected 'except' or 'finally' block")
+    print("   📍 Línea 513: @app.post('/api-management/test-connection')")
+    print("   🔍 Problema: bloque try sin except correspondiente")
+    print("")
     
-    if not templates_ok:
-        print("\n⚠️ Algunos templates faltan, pero continuaré...")
+    # Arreglar el error
+    fix_syntax_error_in_main()
     
-    # 2. Arreglar main.py
-    fix_main_py_authentication()
+    # Verificar que se arregló
+    syntax_ok = verify_syntax()
     
-    # 3. Mostrar endpoints para probar
-    test_endpoints()
+    print(f"\n🎉 CORRECCIÓN COMPLETADA")
     
-    print(f"\n🎉 AUTENTICACIÓN ARREGLADA COMPLETAMENTE")
-    print(f"")
-    print(f"✅ Endpoint raíz único que redirige correctamente")
-    print(f"✅ Dashboard protegido con verificación de sesión")
-    print(f"✅ Rutas de gestión protegidas (requieren admin)")
-    print(f"✅ Logout funcional que limpia sesión")
-    print(f"✅ Funciones de autenticación centralizadas")
-    print(f"")
-    print(f"🚀 AHORA EJECUTA:")
-    print(f"   python run.py")
-    print(f"")
-    print(f"🔗 LUEGO VE A:")
-    print(f"   http://localhost:8000")
-    print(f"")
-    print(f"💡 FLUJO ESPERADO:")
-    print(f"   1. http://localhost:8000/ → muestra página de bienvenida")
-    print(f"   2. Click en 'Iniciar Sesión' → /login")
-    print(f"   3. Login con admin/admin → redirige a /dashboard")
-    print(f"   4. Dashboard muestra stats reales del sistema")
+    if syntax_ok:
+        print("✅ Sintaxis corregida exitosamente")
+        print("✅ Endpoint test-connection reconstruido")
+        print("✅ Archivo listo para ejecutar")
+        print("")
+        print("🚀 AHORA EJECUTA:")
+        print("   python run.py")
+        print("")
+        print("🎮 LUEGO PRUEBA POKEAPI:")
+        print("   1. Ve a /api-management/wizard")
+        print("   2. Cambia POST → GET")
+        print("   3. Presiona 'Probar Conexión'")
+    else:
+        print("❌ Aún hay errores de sintaxis")
+        print("💡 Puede que necesites revisar manualmente el archivo")
 
 if __name__ == "__main__":
     main()

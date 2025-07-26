@@ -403,7 +403,6 @@ async def api_test_page(request: Request):
 
 @app.post("/api-management/test-connection")
 async def test_api_connection_ajax(request: Request):
-    """Test de conexión a API externa - CORREGIDO"""
     try:
         form = await request.form()
         config_data = {
@@ -415,23 +414,23 @@ async def test_api_connection_ajax(request: Request):
             "auth_type": form.get("auth_type", "none")
         }
         
-        # Test directo con httpx
-        import httpx
-        import time
-        
-        # Construir URL completa
-        base_url = config_data["base_url"].rstrip('/')
-        endpoint = config_data["endpoint"].lstrip('/')
-        if not endpoint.startswith('/'):
-            endpoint = '/' + endpoint
-        full_url = base_url + endpoint
-        
-        logger.info(f"🧪 Probando conexión a: {full_url}")
-        
-        # Realizar petición
-        start_time = time.time()
-        
+        # Test directo sin usar ApiConfiguration para evitar errores de modelo
         try:
+            import httpx
+            import time
+            
+            # Construir URL completa
+            base_url = config_data["base_url"].rstrip('/')
+            endpoint = config_data["endpoint"].lstrip('/')
+            if not endpoint.startswith('/'):
+                endpoint = '/' + endpoint
+            full_url = base_url + endpoint
+            
+            logger.info(f"🧪 Probando conexión a: {full_url}")
+            
+            # Realizar petición
+            start_time = time.time()
+            
             async with httpx.AsyncClient(timeout=10) as client:
                 if config_data["method"].upper() == "GET":
                     response = await client.get(full_url)
@@ -510,13 +509,6 @@ async def test_api_connection_ajax(request: Request):
                     "response_time_ms": None
                 }
             }
-            
-    except Exception as e:
-        logger.error(f"Error probando API: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
 
 @app.post("/api-management/save-configuration")
 async def save_api_configuration(request: Request):

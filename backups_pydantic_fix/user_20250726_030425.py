@@ -1,8 +1,7 @@
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from bson import ObjectId
-from ._common import PyObjectId
 
 class PermisosUsuario(BaseModel):
     """Permisos específicos del usuario"""
@@ -39,13 +38,11 @@ class User(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    model_config = ConfigDict(
-        populate_by_name = True,
-        arbitrary_types_allowed = True,
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
-    
-    )
 class UserCreate(BaseModel):
     """Modelo para crear usuario"""
     clerk_user_id: str
@@ -67,7 +64,7 @@ class UserUpdate(BaseModel):
 # app/models/api_config.py
 # ================================
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 from datetime import datetime
 from bson import ObjectId
@@ -114,13 +111,11 @@ class ApiConfiguration(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    model_config = ConfigDict(
-        populate_by_name = True,
-        arbitrary_types_allowed = True,
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
-    
-    )
 class ApiConfigurationCreate(BaseModel):
     """Modelo para crear configuración de API"""
     business_id: str

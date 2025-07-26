@@ -3,7 +3,6 @@
 # ================================
 
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
 from typing import Optional, List
 
 class Settings(BaseSettings):
@@ -52,10 +51,8 @@ class Settings(BaseSettings):
     # CORS
     allowed_origins: List[str] = ["http://localhost:3000", "https://*.vercel.app"]
     
-    model_config = ConfigDict(
-        env_file = ".env",
+    class Config:
+        env_file = ".env"
         case_sensitive = False
 
-    
-    )
 settings = Settings()

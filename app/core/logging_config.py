@@ -1,29 +1,26 @@
+# ================================
+# app/core/logging_config.py - SIMPLE
+# ================================
+
 import logging
-import logging.config
-import os
 from pathlib import Path
 
 def setup_logging():
-    """Configurar sistema de logging"""
+    """Configurar logging básico"""
     
-    # Crear directorio de logs si no existe
+    # Crear directorio de logs
     logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
     
-    # Configurar logging desde archivo
-    config_file = Path("logging.conf")
-    if config_file.exists():
-        logging.config.fileConfig(config_file, disable_existing_loggers=False)
-    else:
-        # Configuración básica si no existe el archivo
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.StreamHandler(),
-                logging.FileHandler('logs/cms-dinamico.log')
-            ]
-        )
+    # Configuración básica
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler('logs/cms-dinamico.log', encoding='utf-8')
+        ]
+    )
     
     # Configurar loggers específicos
     logging.getLogger("uvicorn").setLevel(logging.INFO)
@@ -31,4 +28,4 @@ def setup_logging():
     logging.getLogger("httpx").setLevel(logging.WARNING)
     
     logger = logging.getLogger(__name__)
-    logger.info("Sistema de logging configurado")
+    logger.info("🚀 Sistema de logging configurado")

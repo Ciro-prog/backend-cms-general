@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CMS Dinámico</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { padding: 20px; background: #f0f8ff; border-radius: 8px; margin: 20px 0; }
+        .login-btn { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 CMS Dinámico - Sistema Funcionando</h1>
+        
+        <div class="status">
+            <h3>Estado del Sistema:</h3>
+            <p><strong>Estado:</strong> {{ system_info.status }}</p>
+            <p><strong>Versión:</strong> {{ system_info.version }}</p>
+            <p><strong>Última actualización:</strong> {{ system_info.timestamp }}</p>
+            {% if system_info.total_businesses is defined %}
+            <p><strong>Negocios registrados:</strong> {{ system_info.total_businesses }}</p>
+            <p><strong>APIs activas:</strong> {{ system_info.active_apis }}</p>
+            {% endif %}
+        </div>
+        
+        <p>Bienvenido al CMS Dinámico. Para acceder al sistema, por favor inicia sesión.</p>
+        
+        <p><a href="/login" class="login-btn">Iniciar Sesión</a></p>
+        
+        <h3>Usuarios de Prueba:</h3>
+        <ul>
+            <li><strong>superadmin</strong> / superadmin - Administrador del sistema</li>
+            <li><strong>admin</strong> / admin - Administrador de negocio</li>
+            <li><strong>usuario</strong> / usuario - Usuario regular</li>
+        </ul>
+    </div>
+</body>
+</html>

@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Visualización de Datos - CMS Dinámico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+    <link href="https://unpkg.com/gridjs/dist/theme/mermaid.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+    
+    <!-- Navbar -->
+    <nav class="bg-white shadow-lg border-b border-gray-200">
+        <div class="max-w-full mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-gray-900">
+                        📊 Visualización de Datos
+                    </h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="refreshAllData()" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-sync-alt mr-2"></i>Actualizar Todo
+                    </button>
+                    <a href="/api-testing" class="text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-arrow-left mr-2"></i>Testing
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">📊 Dashboard de APIs</h1>
+                <p class="text-gray-600 mt-2">Visualiza y analiza datos de tus APIs externas</p>
+            </div>
+            <div class="flex space-x-3">
+                <select id="businessSelector" onchange="loadBusinessData()" 
+                        class="border border-gray-300 rounded-lg px-3 py-2">
+                    <option value="">Seleccionar Business...</option>
+                    <option value="demo_testing">Demo Testing</option>
+                    <option value="isp_telconorte">ISP TelcoNorte</option>
+                    <option value="clinica_santa_maria">Clínica Santa María</option>
+                </select>
+                <button onclick="exportDashboard()" 
+                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                    <i class="fas fa-download mr-2"></i>Exportar
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <i class="fas fa-plug text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">APIs Configuradas</p>
+                        <p class="text-2xl font-bold" id="totalApis">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <i class="fas fa-check-circle text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">APIs Activas</p>
+                        <p class="text-2xl font-bold" id="activeApis">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                        <i class="fas fa-database text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">Total Registros</p>
+                        <p class="text-2xl font-bold" id="totalRecords">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                        <i class="fas fa-tachometer-alt text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-gray-600">Tiempo Promedio</p>
+                        <p class="text-2xl font-bold" id="avgResponseTime">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Selector y Controls -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">API a Visualizar</label>
+                        <select id="apiSelector" onchange="loadApiData()" 
+                                class="mt-1 border border-gray-300 rounded-lg px-3 py-2 min-w-64">
+                            <option value="">Seleccionar API...</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Tipo de Visualización</label>
+                        <select id="visualizationType" onchange="changeVisualization()" 
+                                class="mt-1 border border-gray-300 rounded-lg px-3 py-2">
+                            <option value="table">📋 Tabla</option>
+                            <option value="cards">🗃️ Cards</option>
+                            <option value="chart">📊 Gráfico</option>
+                            <option value="stats">📈 Estadísticas</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Límite</label>
+                        <select id="recordLimit" onchange="loadApiData()" 
+                                class="mt-1 border border-gray-300 rounded-lg px-3 py-2">
+                            <option value="10">10 registros</option>
+                            <option value="25" selected>25 registros</option>
+                            <option value="50">50 registros</option>
+                            <option value="100">100 registros</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-2">
+                    <button onclick="testCurrentApi()" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-play mr-2"></i>Test API
+                    </button>
+                    <button onclick="refreshCurrentData()" 
+                            class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <i class="fas fa-refresh mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Visualization Area -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="p-6 border-b border-gray-200">
+                <h3 class="text-lg font-semibold" id="visualizationTitle">Selecciona una API para visualizar</h3>
+                <div class="flex items-center mt-2">
+                    <div class="flex items-center space-x-4 text-sm text-gray-600">
+                        <span id="recordCount">0 registros</span>
+                        <span id="fieldCount">0 campos</span>
+                        <span id="lastUpdate">Sin datos</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <!-- Table View -->
+                <div id="tableView" class="visualization-container">
+                    <div class="text-center text-gray-500 py-12">
+                        <i class="fas fa-table text-4xl mb-4"></i>
+                        <p>Selecciona una API para ver los datos en tabla</p>
+                    </div>
+                </div>
+                
+                <!-- Cards View -->
+                <div id="cardsView" class="visualization-container hidden">
+                    <div class="text-center text-gray-500 py-12">
+                        <i class="fas fa-th-large text-4xl mb-4"></i>
+                        <p>Selecciona una API para ver los datos en cards</p>
+                    </div>
+                </div>
+                
+                <!-- Chart View -->
+                <div id="chartView" class="visualization-container hidden">
+                    <div class="text-center text-gray-500 py-12">
+                        <i class="fas fa-chart-bar text-4xl mb-4"></i>
+                        <p>Selecciona una API para ver gráficos</p>
+                    </div>
+                    <canvas id="dataChart" class="hidden max-h-96"></canvas>
+                </div>
+                
+                <!-- Stats View -->
+                <div id="statsView" class="visualization-container hidden">
+                    <div class="text-center text-gray-500 py-12">
+                        <i class="fas fa-calculator text-4xl mb-4"></i>
+                        <p>Selecciona una API para ver estadísticas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Details Panel -->
+        <div id="apiDetailsPanel" class="hidden mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Configuration Details -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold">⚙️ Configuración de la API</h3>
+                </div>
+                <div class="p-6">
+                    <div id="apiConfigDetails" class="space-y-3">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Field Mapping -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold">🔗 Mapeo de Campos</h3>
+                </div>
+                <div class="p-6">
+                    <div id="fieldMappingDetails" class="space-y-2">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="messageContainer" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
+        
+    </div>
+
+    <script>
+        // Variables globales
+        let currentBusiness = null;
+        let currentApi = null;
+        let currentData = null;
+        let currentConfig = null;
+        let dataTable = null;
+        let dataChart = null;
+        
+        const API_BASE = window.location.origin + '/api';
+        
+        // ================================
+        // FUNCIONES DE CARGA DE DATOS
+        // ================================
+        
+        async function loadBusinessData() {
+            const businessId = document.getElementById('businessSelector').value;
+            if (!businessId) {
+                clearApiSelector();
+                return;
+            }
+            
+            currentBusiness = businessId;
+            
+            try {
+                // Cargar estadísticas del business
+                const statsResponse = await fetch(`${API_BASE}/admin/api-stats/${businessId}`);
+                const statsResult = await statsResponse.json();
+                
+                if (statsResult.success) {
+                    updateBusinessStats(statsResult.data);
+                }
+                
+                // Cargar APIs disponibles
+                const apisResponse = await fetch(`${API_BASE}/admin/api-configs/${businessId}`);
+                const apisResult = await apisResponse.json();
+                
+                if (apisResult.success) {
+                    populateApiSelector(apisResult.data);
+                }
+                
+            } catch (error) {
+                showMessage('Error cargando datos del business: ' + error.message, 'error');
+            }
+        }
+        
+        async function loadApiData() {
+            const apiId = document.getElementById('apiSelector').value;
+            if (!apiId || !currentBusiness) {
+                return;
+            }
+            
+            currentApi = apiId;
+            showLoading(true);
+            
+            try {
+                // Obtener configuración de la API
+                const configResponse = await fetch(`${API_BASE}/admin/api-configs/${currentBusiness}/${apiId}`);
+                const configResult = await configResponse.json();
+                
+                if (!configResult.success) {
+                    throw new Error('No se pudo cargar la configuración de la API');
+                }
+                
+                currentConfig = configResult.data;
+                
+                // Probar la API para obtener datos
+                const testResponse = await fetch(`${API_BASE}/admin/api-test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        business_id: currentBusiness,
+                        api_id: apiId,
+                        base_url: currentConfig.base_url,
+                        endpoint: currentConfig.endpoint,
+                        method: currentConfig.method,
+                        auth_type: currentConfig.auth_type,
+                        auth_config: currentConfig.auth_config,
+                        limit_records: parseInt(document.getElementById('recordLimit').value)
+                    })
+                });
+                
+                const testResult = await testResponse.json();
+                
+                if (testResult.success) {
+                    currentData = testResult.data;
+                    updateVisualization();
+                    updateApiDetails();
+                    showMessage('Datos cargados exitosamente', 'success');
+                } else {
+                    throw new Error(testResult.data?.error_message || 'Error en la API');
+                }
+                
+            } catch (error) {
+                showMessage('Error cargando datos de la API: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // ================================
+        // FUNCIONES DE VISUALIZACIÓN
+        // ================================
+        
+        function changeVisualization() {
+            if (!currentData) return;
+            
+            const type = document.getElementById('visualizationType').value;
+            
+            // Ocultar todas las vistas
+            document.querySelectorAll('.visualization-container').forEach(container => {
+                container.classList.add('hidden');
+            });
+            
+            // Mostrar vista seleccionada
+            document.getElementById(type + 'View').classList.remove('hidden');
+            
+            // Renderizar según el tipo
+            switch (type) {
+                case 'table':
+                    renderTable();
+                    break;
+                case 'cards':
+                    renderCards();
+                    break;
+                case 'chart':
+                    renderChart();
+                    break;
+                case 'stats':
+                    renderStats();
+                    break;
+            }
+        }
+        
+        function renderTable() {
+            if (!currentData || !currentData.sample_data) return;
+            
+            const container = document.getElementById('tableView');
+            
+            // Destruir tabla existente
+            if (dataTable) {
+                dataTable.destroy();
+            }
+            
+            // Preparar datos
+            const data = currentData.sample_data;
+            if (data.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">No hay datos disponibles</div>';
+                return;
+            }
+            
+            const fields = Object.keys(data[0]);
+            
+            // Crear tabla con Grid.js
+            container.innerHTML = '<div id="tableContainer"></div>';
+            
+            dataTable = new gridjs.Grid({
+                columns: fields.map(field => ({
+                    name: field.replace('_', ' ').toUpperCase(),
+                    id: field,
+                    formatter: (cell) => {
+                        if (typeof cell === 'object') {
+                            return JSON.stringify(cell);
+                        }
+                        return cell;
+                    }
+                })),
+                data: data,
+                search: true,
+                sort: true,
+                pagination: {
+                    enabled: true,
+                    limit: 10
+                },
+                style: {
+                    table: {
+                        'font-size': '14px'
+                    }
+                }
+            }).render(document.getElementById('tableContainer'));
+        }
+        
+        function renderCards() {
+            if (!currentData || !currentData.sample_data) return;
+            
+            const container = document.getElementById('cardsView');
+            const data = currentData.sample_data;
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">No hay datos disponibles</div>';
+                return;
+            }
+            
+            let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+            
+            data.forEach((item, index) => {
+                const fields = Object.keys(item);
+                const primaryField = fields[0];
+                const primaryValue = item[primaryField];
+                
+                html += `
+                <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-semibold text-gray-900">#${index + 1}</h4>
+                        <span class="text-xs text-gray-500">${currentApi}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="text-lg font-medium text-blue-600">${primaryValue}</div>
+                        <div class="text-xs text-gray-500">${primaryField}</div>
+                    </div>
+                    
+                    <div class="space-y-1">
+                `;
+                
+                fields.slice(1, 4).forEach(field => {
+                    const value = item[field];
+                    const displayValue = typeof value === 'object' ? JSON.stringify(value).substring(0, 30) + '...' : value;
+                    
+                    html += `
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">${field}:</span>
+                        <span class="text-gray-900 truncate ml-2">${displayValue}</span>
+                    </div>
+                    `;
+                });
+                
+                if (fields.length > 4) {
+                    html += `<div class="text-xs text-gray-400">+${fields.length - 4} campos más</div>`;
+                }
+                
+                html += `
+                    </div>
+                    
+                    <div class="mt-3 pt-3 border-t border-gray-100">
+                        <button onclick="viewItemDetails(${index})" class="text-blue-600 hover:text-blue-800 text-xs">
+                            <i class="fas fa-eye mr-1"></i>Ver detalles
+                        </button>
+                    </div>
+                </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function renderChart() {
+            if (!currentData || !currentData.sample_data) return;
+            
+            const container = document.getElementById('chartView');
+            const data = currentData.sample_data;
+            
+            if (data.length === 0) {
+                container.querySelector('.text-center').classList.remove('hidden');
+                return;
+            }
+            
+            // Ocultar mensaje y mostrar canvas
+            container.querySelector('.text-center').classList.add('hidden');
+            const canvas = document.getElementById('dataChart');
+            canvas.classList.remove('hidden');
+            
+            // Destruir gráfico existente
+            if (dataChart) {
+                dataChart.destroy();
+            }
+            
+            // Detectar campos numéricos para el gráfico
+            const fields = Object.keys(data[0]);
+            const numericFields = fields.filter(field => {
+                return data.some(item => typeof item[field] === 'number');
+            });
+            
+            if (numericFields.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">No hay campos numéricos para graficar</div>';
+                return;
+            }
+            
+            // Crear gráfico de barras
+            const labels = data.map((item, index) => `Registro ${index + 1}`);
+            const firstNumericField = numericFields[0];
+            const chartData = data.map(item => item[firstNumericField]);
+            
+            dataChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: firstNumericField.replace('_', ' ').toUpperCase(),
+                        data: chartData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderStats() {
+            if (!currentData || !currentData.sample_data) return;
+            
+            const container = document.getElementById('statsView');
+            const data = currentData.sample_data;
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">No hay datos disponibles</div>';
+                return;
+            }
+            
+            // Calcular estadísticas
+            const fields = Object.keys(data[0]);
+            const stats = {
+                totalRecords: data.length,
+                totalFields: fields.length,
+                fieldTypes: {},
+                fieldCompleteness: {},
+                numericStats: {}
+            };
+            
+            // Analizar cada campo
+            fields.forEach(field => {
+                const values = data.map(item => item[field]).filter(v => v !== null && v !== undefined && v !== '');
+                const completeness = (values.length / data.length) * 100;
+                
+                stats.fieldCompleteness[field] = completeness;
+                
+                // Detectar tipo más común
+                const types = values.map(v => typeof v);
+                const typeCount = types.reduce((acc, type) => {
+                    acc[type] = (acc[type] || 0) + 1;
+                    return acc;
+                }, {});
+                stats.fieldTypes[field] = Object.keys(typeCount).reduce((a, b) => typeCount[a] > typeCount[b] ? a : b);
+                
+                // Estadísticas numéricas
+                if (stats.fieldTypes[field] === 'number') {
+                    const numValues = values.filter(v => typeof v === 'number');
+                    if (numValues.length > 0) {
+                        stats.numericStats[field] = {
+                            min: Math.min(...numValues),
+                            max: Math.max(...numValues),
+                            avg: numValues.reduce((a, b) => a + b, 0) / numValues.length,
+                            sum: numValues.reduce((a, b) => a + b, 0)
+                        };
+                    }
+                }
+            });
+            
+            // Renderizar estadísticas
+            let html = `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Estadísticas Generales -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="font-semibold mb-3">📊 Resumen General</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span>Total Registros:</span>
+                            <span class="font-medium">${stats.totalRecords}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Total Campos:</span>
+                            <span class="font-medium">${stats.totalFields}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Fuente:</span>
+                            <span class="font-medium">${currentConfig?.name || 'API Externa'}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Completitud de Campos -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="font-semibold mb-3">✅ Completitud de Campos</h4>
+                    <div class="space-y-2 text-sm">
+            `;
+            
+            Object.entries(stats.fieldCompleteness).slice(0, 5).forEach(([field, completeness]) => {
+                const color = completeness >= 90 ? 'text-green-600' : completeness >= 70 ? 'text-yellow-600' : 'text-red-600';
+                html += `
+                <div class="flex justify-between">
+                    <span class="truncate">${field}:</span>
+                    <span class="font-medium ${color}">${completeness.toFixed(1)}%</span>
+                </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+                
+                <!-- Estadísticas Numéricas -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="font-semibold mb-3">🔢 Campos Numéricos</h4>
+                    <div class="space-y-3 text-sm">
+            `;
+            
+            Object.entries(stats.numericStats).slice(0, 3).forEach(([field, numStats]) => {
+                html += `
+                <div>
+                    <div class="font-medium text-gray-900">${field}</div>
+                    <div class="text-xs text-gray-600 space-y-1">
+                        <div>Min: ${numStats.min} | Max: ${numStats.max}</div>
+                        <div>Promedio: ${numStats.avg.toFixed(2)}</div>
+                    </div>
+                </div>
+                `;
+            });
+            
+            if (Object.keys(stats.numericStats).length === 0) {
+                html += '<div class="text-gray-500">No hay campos numéricos</div>';
+            }
+            
+            html += `
+                    </div>
+                </div>
+                
+                <!-- Tipos de Datos -->
+                <div class="bg-gray-50 rounded-lg p-4 md:col-span-2 lg:col-span-3">
+                    <h4 class="font-semibold mb-3">🏷️ Tipos de Datos por Campo</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
+            `;
+            
+            Object.entries(stats.fieldTypes).forEach(([field, type]) => {
+                const typeIcon = {
+                    'string': '📝',
+                    'number': '🔢',
+                    'boolean': '✅',
+                    'object': '📦'
+                };
+                
+                html += `
+                <div class="flex items-center space-x-2 bg-white rounded p-2">
+                    <span>${typeIcon[type] || '❓'}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="truncate font-medium">${field}</div>
+                        <div class="text-xs text-gray-500">${type}</div>
+                    </div>
+                </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+            </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // ================================
+        // FUNCIONES DE UI
+        // ================================
+        
+        function updateVisualization() {
+            if (!currentData) return;
+            
+            // Actualizar título y métricas
+            document.getElementById('visualizationTitle').textContent = `${currentConfig?.name || currentApi} - Datos`;
+            document.getElementById('recordCount').textContent = `${currentData.total_records || 0} registros`;
+            document.getElementById('fieldCount').textContent = `${(currentData.detected_fields || []).length} campos`;
+            document.getElementById('lastUpdate').textContent = `Actualizado: ${new Date().toLocaleTimeString()}`;
+            
+            // Renderizar visualización actual
+            changeVisualization();
+        }
+        
+        function updateApiDetails() {
+            if (!currentConfig) return;
+            
+            // Mostrar panel de detalles
+            document.getElementById('apiDetailsPanel').classList.remove('hidden');
+            
+            // Configuración de la API
+            const configContainer = document.getElementById('apiConfigDetails');
+            configContainer.innerHTML = `
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">URL:</span>
+                    <span class="font-medium">${currentConfig.base_url}${currentConfig.endpoint}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Método:</span>
+                    <span class="font-medium">${currentConfig.method}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Autenticación:</span>
+                    <span class="font-medium">${currentConfig.auth_type}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Cache TTL:</span>
+                    <span class="font-medium">${currentConfig.cache_ttl}s</span>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">Estado:</span>
+                    <span class="font-medium ${currentConfig.active ? 'text-green-600' : 'text-red-600'}">
+                        ${currentConfig.active ? 'Activa' : 'Inactiva'}
+                    </span>
+                </div>
+            `;
+            
+            // Mapeo de campos
+            const mappingContainer = document.getElementById('fieldMappingDetails');
+            if (currentConfig.field_mappings && currentConfig.field_mappings.length > 0) {
+                let mappingHtml = '';
+                currentConfig.field_mappings.forEach(mapping => {
+                    mappingHtml += `
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-blue-600 text-sm">${mapping.api_field}</span>
+                        <i class="fas fa-arrow-right text-gray-400"></i>
+                        <span class="text-green-600 text-sm">${mapping.entity_field}</span>
+                    </div>
+                    `;
+                });
+                mappingContainer.innerHTML = mappingHtml;
+            } else {
+                mappingContainer.innerHTML = '<div class="text-gray-500 text-sm">No hay mapeos configurados</div>';
+            }
+        }
+        
+        function updateBusinessStats(stats) {
+            document.getElementById('totalApis').textContent = stats.total_apis || 0;
+            document.getElementById('activeApis').textContent = stats.active_apis || 0;
+            document.getElementById('totalRecords').textContent = '-'; // Se actualizará con datos reales
+            document.getElementById('avgResponseTime').textContent = '-'; // Se actualizará con datos reales
+        }
+        
+        function populateApiSelector(apis) {
+            const selector = document.getElementById('apiSelector');
+            selector.innerHTML = '<option value="">Seleccionar API...</option>';
+            
+            apis.forEach(api => {
+                const option = document.createElement('option');
+                option.value = api.api_id;
+                option.textContent = `${api.name} (${api.api_id})`;
+                selector.appendChild(option);
+            });
+        }
+        
+        function clearApiSelector() {
+            document.getElementById('apiSelector').innerHTML = '<option value="">Seleccionar Business primero...</option>';
+            // Limpiar visualización
+            document.querySelectorAll('.visualization-container').forEach(container => {
+                container.innerHTML = '<div class="text-center text-gray-500 py-12"><i class="fas fa-info-circle text-4xl mb-4"></i><p>Selecciona un business y API</p></div>';
+            });
+        }
+        
+        // ================================
+        // FUNCIONES DE UTILIDAD
+        // ================================
+        
+        async function testCurrentApi() {
+            if (!currentApi || !currentBusiness) {
+                showMessage('Selecciona una API primero', 'warning');
+                return;
+            }
+            
+            await loadApiData();
+        }
+        
+        async function refreshCurrentData() {
+            if (!currentApi || !currentBusiness) {
+                showMessage('Selecciona una API primero', 'warning');
+                return;
+            }
+            
+            await loadApiData();
+        }
+        
+        async function refreshAllData() {
+            if (currentBusiness) {
+                await loadBusinessData();
+                if (currentApi) {
+                    await loadApiData();
+                }
+            }
+        }
+        
+        function viewItemDetails(index) {
+            if (!currentData || !currentData.sample_data[index]) return;
+            
+            const item = currentData.sample_data[index];
+            const detailsHtml = Object.entries(item).map(([key, value]) => 
+                `<div class="py-2 border-b"><strong>${key}:</strong> ${typeof value === 'object' ? JSON.stringify(value, null, 2) : value}</div>`
+            ).join('');
+            
+            // Mostrar modal o alert simple (se puede mejorar)
+            alert(`Detalles del registro ${index + 1}:\n\n${JSON.stringify(item, null, 2)}`);
+        }
+        
+        function exportDashboard() {
+            if (!currentData) {
+                showMessage('No hay datos para exportar', 'warning');
+                return;
+            }
+            
+            const exportData = {
+                api_config: currentConfig,
+                data: currentData.sample_data,
+                export_date: new Date().toISOString(),
+                business_id: currentBusiness,
+                api_id: currentApi
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `dashboard-export-${currentApi}-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            showMessage('Dashboard exportado exitosamente', 'success');
+        }
+        
+        function showLoading(show) {
+            // Implementar loading spinner si es necesario
+            if (show) {
+                document.body.style.cursor = 'wait';
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        }
+        
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            const messageEl = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-green-500' : 
+                           type === 'error' ? 'bg-red-500' : 
+                           type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500';
+            
+            messageEl.className = `${bgColor} text-white px-4 py-2 rounded-lg shadow-lg transform transition-all duration-300`;
+            messageEl.textContent = message;
+            
+            container.appendChild(messageEl);
+            
+            setTimeout(() => {
+                messageEl.style.transform = 'translateX(100%)';
+                setTimeout(() => container.removeChild(messageEl), 300);
+            }, 4000);
+        }
+        
+        // ================================
+        // INICIALIZACIÓN
+        // ================================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configurar visualización por defecto
+            document.getElementById('visualizationType').value = 'table';
+            
+            // Cargar ejemplos si no hay business seleccionado
+            setTimeout(() => {
+                const business = document.getElementById('businessSelector').value;
+                if (!business) {
+                    document.getElementById('businessSelector').value = 'demo_testing';
+                    loadBusinessData();
+                }
+            }, 1000);
+        });
+    </script>
+
+</body>
+</html>

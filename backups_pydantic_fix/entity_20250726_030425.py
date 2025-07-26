@@ -1,8 +1,7 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 from bson import ObjectId
-from ._common import PyObjectId
 
 class CampoConfig(BaseModel):
     """Configuración de un campo de entidad"""
@@ -57,13 +56,11 @@ class EntityConfig(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    model_config = ConfigDict(
-        populate_by_name = True,
-        arbitrary_types_allowed = True,
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
-    
-    )
 class EntityConfigDetailed(BaseModel):
     """Configuración detallada de entidad con tipos específicos"""
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
@@ -75,13 +72,11 @@ class EntityConfigDetailed(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
-    model_config = ConfigDict(
-        populate_by_name = True,
-        arbitrary_types_allowed = True,
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
-    
-    )
 class EntityConfigCreate(BaseModel):
     """Modelo para crear configuración de entidad"""
     business_id: str
@@ -100,7 +95,7 @@ class EntityConfigUpdate(BaseModel):
 # app/models/view.py
 # ================================
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from bson import ObjectId
@@ -126,3 +121,58 @@ class ConfiguracionComponente(BaseModel):
     paginacion: Optional[Dict[str, Any]] = None
     acciones: Optional[Dict[str, Dict[str, List[str]]]] = None
     filtros: Optional[List[Dict[str, Any]]] = None
+
+class ComponenteVista(BaseModel):
+    """Componente individual de una vista"""
+    id: str
+    tipo: str  # "stats_card", "chart", "data_table", "form", "custom"
+    posicion: Posicion = Field(default_factory=Posicion)
+    configuracion: ConfiguracionComponente = Field(default_factory=ConfiguracionComponente)
+    permisos_rol: List[str] = ["*"]
+
+class LayoutConfig(BaseModel):
+    """Configuración del layout de la vista"""
+    tipo: str = "grid"  # "grid", "flex", "absolute"
+    columnas: int = 12
+    gap: int = 4
+    responsive: bool = True
+
+class ItemNavegacion(BaseModel):
+    """Item de navegación"""
+    titulo: str
+    ruta: str
+    icono: Optional[str] = None
+    permisos_rol: List[str] = ["*"]
+
+class ConfiguracionVista(BaseModel):
+    """Configuración completa de la vista"""
+    layout: LayoutConfig = Field(default_factory=LayoutConfig)
+    componentes: List[ComponenteVista] = []
+    navegacion: List[ItemNavegacion] = []
+
+class ViewConfig(BaseModel):
+    """Configuración de vista"""
+    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    business_id: str
+    vista: str
+    configuracion: ConfiguracionVista = Field(default_factory=ConfiguracionVista)
+    permisos_vista: List[str] = ["*"]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class ViewConfigCreate(BaseModel):
+    """Modelo para crear configuración de vista"""
+    business_id: str
+    vista: str
+    configuracion: ConfiguracionVista
+    permisos_vista: List[str] = ["*"]
+
+class ViewConfigUpdate(BaseModel):
+    """Modelo para actualizar configuración de vista"""
+    configuracion: Optional[ConfiguracionVista] = None
+    permisos_vista: Optional[List[str]] = None

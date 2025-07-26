@@ -1,25 +1,12 @@
 # ================================
-# app/models/responses.py - ARREGLADO PARA PYDANTIC V2
+# app/models/responses.py - Modelos de Respuesta
 # ================================
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from typing import Generic, TypeVar, Optional, List, Dict, Any
 from datetime import datetime
-from bson import ObjectId
 
 T = TypeVar('T')
-
-# Configuracion estandar para respuestas
-RESPONSE_CONFIG = ConfigDict(
-    populate_by_name=True,
-    arbitrary_types_allowed=True,
-    json_encoders={ObjectId: str, datetime: lambda dt: dt.isoformat()},
-    str_strip_whitespace=True
-)
-
-# ================================
-# RESPUESTAS BASE
-# ================================
 
 class BaseResponse(BaseModel, Generic[T]):
     """Respuesta base para todas las APIs"""
@@ -28,7 +15,10 @@ class BaseResponse(BaseModel, Generic[T]):
     data: Optional[T] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     
-    model_config = RESPONSE_CONFIG
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 class PaginatedResponse(BaseModel, Generic[T]):
     """Respuesta paginada"""
@@ -38,10 +28,13 @@ class PaginatedResponse(BaseModel, Generic[T]):
     pagination: Dict[str, Any] = {}
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     
-    model_config = RESPONSE_CONFIG
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 class PaginationInfo(BaseModel):
-    """Informacion de paginacion"""
+    """Información de paginación"""
     page: int = 1
     per_page: int = 10
     total_items: int = 0
@@ -57,14 +50,17 @@ class ErrorResponse(BaseModel):
     error_code: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     
-    model_config = RESPONSE_CONFIG
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 # ================================
-# RESPUESTAS ESPECIFICAS PARA APIs
+# RESPUESTAS ESPECÍFICAS PARA APIs
 # ================================
 
 class ApiTestResponse(BaseModel):
-    """Respuesta del test de conexion API"""
+    """Respuesta del test de conexión API"""
     success: bool
     status_code: Optional[int] = None
     response_time_ms: Optional[float] = None
@@ -73,7 +69,7 @@ class ApiTestResponse(BaseModel):
     detected_fields: Optional[List[str]] = None
 
 class ApiConfigurationResponse(BaseModel):
-    """Respuesta para configuracion de API"""
+    """Respuesta para configuración de API"""
     api_id: str
     business_id: str
     name: str
@@ -81,8 +77,6 @@ class ApiConfigurationResponse(BaseModel):
     last_test: Optional[ApiTestResponse] = None
     created_at: datetime
     updated_at: datetime
-    
-    model_config = RESPONSE_CONFIG
 
 class ComponentPreviewResponse(BaseModel):
     """Respuesta para preview de componente"""
@@ -90,8 +84,6 @@ class ComponentPreviewResponse(BaseModel):
     sample_data: List[Dict[str, Any]]
     field_mapping: Dict[str, str]
     display_config: Dict[str, Any]
-    
-    model_config = RESPONSE_CONFIG
 
 # ================================
 # HELPER FUNCTIONS
@@ -137,5 +129,5 @@ def create_paginated_response(
         success=True,
         message=message,
         data=data,
-        pagination=pagination_info.model_dump()
+        pagination=pagination_info.dict()
     )

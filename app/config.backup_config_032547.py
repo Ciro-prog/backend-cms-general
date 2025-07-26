@@ -3,7 +3,6 @@
 # ================================
 
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
 from typing import Optional, List
 
 class Settings(BaseSettings):

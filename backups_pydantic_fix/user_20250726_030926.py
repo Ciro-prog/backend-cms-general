@@ -2,7 +2,6 @@ from pydantic import BaseModel, ConfigDict, Field, EmailStr
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from bson import ObjectId
-from ._common import PyObjectId
 
 class PermisosUsuario(BaseModel):
     """Permisos específicos del usuario"""

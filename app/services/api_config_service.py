@@ -4,7 +4,7 @@ import logging
 
 from ..database import get_database
 from ..models.api_config import ApiConfiguration, ApiConfigurationCreate, ApiConfigurationUpdate
-from ..services.crypto_service import CryptoService
+from .crypto_service import CryptoService
 
 logger = logging.getLogger(__name__)
 

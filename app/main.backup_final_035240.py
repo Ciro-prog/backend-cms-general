@@ -50,37 +50,6 @@ logger = logging.getLogger(__name__)
 from .database import connect_to_mongo, close_mongo_connection, get_database, ping_database, create_indexes
 from .config import settings
 
-
-# ================================
-# FUNCIONES DE AUTENTICACIÓN
-# ================================
-
-def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
-    """Obtener usuario actual de la sesión"""
-    if hasattr(request, 'session') and request.session.get("authenticated"):
-        return request.session.get("user")
-    return None
-
-def require_auth(request: Request) -> Dict[str, Any]:
-    """Requerir autenticación - lanza excepción si no está logueado"""
-    user = get_current_user(request)
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Autenticación requerida"
-        )
-    return user
-
-def require_admin(request: Request) -> Dict[str, Any]:
-    """Requerir rol admin o superior"""
-    user = require_auth(request)
-    if user["role"] not in ["admin", "super_admin"]:
-        raise HTTPException(
-            status_code=403,
-            detail="Permisos de administrador requeridos"
-        )
-    return user
-
 # ================================
 # MODELOS PYDANTIC
 # ================================
@@ -217,7 +186,14 @@ logger = logging.getLogger(__name__)
 # ================================
 # ENDPOINTS BÁSICOS Y DE INFO
 # ================================
-
+@app.get("/")
+async def root():
+    return {
+        "message": "CMS Dinámico API",
+        "version": "1.0.0",
+        "status": "running",
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 @app.get("/api", include_in_schema=False)
 async def api_root():
@@ -302,9 +278,6 @@ async def app_info():
 # ================================
 @app.get("/api-management", response_class=HTMLResponse)
 async def api_management(request: Request):
-    """Gestión de APIs - requiere admin"""
-    user = require_admin(request)
-
     try:
         from .services.api_service import ApiService
         api_service = ApiService()
@@ -327,9 +300,6 @@ async def api_management(request: Request):
 
 @app.get("/api-management/wizard", response_class=HTMLResponse)
 async def api_wizard(request: Request):
-    """Wizard de APIs - requiere admin"""
-    user = require_admin(request)
-
     try:
         from .services.business_service import BusinessService
         business_service = BusinessService()
@@ -352,9 +322,6 @@ async def api_wizard(request: Request):
 
 @app.get("/api-management/test", response_class=HTMLResponse)
 async def api_test_page(request: Request):
-    """Test de APIs - requiere admin"""
-    user = require_admin(request)
-
     return templates.TemplateResponse("api_test.html", {
         "request": request,
         "page_title": "Test de APIs",
@@ -833,10 +800,6 @@ async def login_post(request: Request, username: str = Form(...), password: str 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    """Dashboard principal - requiere autenticación"""
-    
-    # Verificar autenticación
-    user = require_auth(request)
     # Obtener info del sistema (usa health_check y/o app_info)
     try:
         system_info = await health_check()
@@ -859,7 +822,12 @@ async def dashboard(request: Request):
             "version": "1.0.0"
         }
     # Usuario simulado (no usar request.user)
-    current_user = user
+    current_user = {
+        "name": "Super Admin",
+        "role": "super_admin",
+        "username": "superadmin",
+        "business_id": "isp_telconorte"
+    }
     # Simulación de stats (puedes calcularlos de la base si quieres)
     stats = None
     try:
@@ -889,56 +857,13 @@ async def dashboard(request: Request):
     )
 
 @app.post("/logout")
-async def logout(request: Request):
-    """Cerrar sesión"""
-    user = get_current_user(request)
-    
-    if user:
-        logger.info(f"👋 Usuario {user['username']} cerró sesión")
-    
-    # Limpiar sesión
-    request.session.clear()
-    
+async def logout():
     return RedirectResponse(url="/login", status_code=302)
 
 # Redirigir la raíz a /login para experiencia de app
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    """Página principal - redirige según autenticación"""
-    
-    user = get_current_user(request)
-    
-    if user:
-        # Usuario logueado - ir al dashboard
-        logger.info(f"🏠 Usuario {user['username']} accedió a página principal - redirigiendo a dashboard")
-        return RedirectResponse(url="/dashboard", status_code=302)
-    else:
-        # Usuario no logueado - mostrar página de bienvenida
-        logger.info("🏠 Usuario anónimo accedió a página principal - mostrando página de bienvenida")
-        
-        # Obtener información del sistema
-        try:
-            db = get_database()
-            system_info = {
-                "status": "running",
-                "version": "1.0.0",
-                "timestamp": datetime.utcnow().isoformat(),
-                "total_businesses": await db.business_instances.count_documents({}),
-                "active_apis": await db.api_configurations.count_documents({"active": True})
-            }
-        except Exception as e:
-            logger.error(f"Error obteniendo info del sistema: {e}")
-            system_info = {
-                "status": "running",
-                "version": "1.0.0", 
-                "timestamp": datetime.utcnow().isoformat(),
-                "error": "Error conectando a base de datos"
-            }
-        
-        return templates.TemplateResponse("home.html", {
-            "request": request,
-            "system_info": system_info
-        })
+@app.get("/", include_in_schema=False)
+async def root_redirect():
+    return RedirectResponse(url="/login", status_code=302)
 
 # ================================
 # FRONTEND DEL CONFIGURADOR DE ENTIDADES

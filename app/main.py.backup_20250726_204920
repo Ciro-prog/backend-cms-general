@@ -373,11 +373,7 @@ async def api_wizard(request: Request):
     try:
         from .services.business_service import BusinessService
         business_service = BusinessService()
-        try:
-            businesses = await business_service.get_all_business_instances()
-        except Exception as e:
-            logger.error(f"Error cargando businesses: {e}")
-            businesses = []
+        businesses = await business_service.get_all_businesses() if hasattr(business_service, 'get_all_businesses') else []
         return templates.TemplateResponse("api_wizard.html", {
             "request": request,
             "businesses": businesses,

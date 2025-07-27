@@ -373,11 +373,7 @@ async def api_wizard(request: Request):
     try:
         from .services.business_service import BusinessService
         business_service = BusinessService()
-        try:
-            businesses = await business_service.get_all_business_instances()
-        except Exception as e:
-            logger.error(f"Error cargando businesses: {e}")
-            businesses = []
+        businesses = await business_service.get_all_businesses() if hasattr(business_service, 'get_all_businesses') else []
         return templates.TemplateResponse("api_wizard.html", {
             "request": request,
             "businesses": businesses,
@@ -1137,97 +1133,3 @@ logger.info("  🧙 GET /api-management/wizard - Configurar nueva API")
 logger.info("  🧪 GET /api-management/test - Test de APIs")
 logger.info("  ⚡ POST /api-management/test-connection - Test AJAX")
 logger.info("  💾 POST /api-management/save-configuration - Guardar config")
-# ================================
-# NUEVOS ENDPOINTS PARA MAPPING MANUAL
-# ================================
-
-@app.get("/api-management/preview/{mapping_id}", response_class=HTMLResponse)
-async def api_preview_page(request: Request, mapping_id: str):
-    """Página de preview de datos mapeados"""
-    user = require_admin(request)
-    
-    return templates.TemplateResponse("data_preview.html", {
-        "request": request,
-        "mapping_id": mapping_id,
-        "page_title": "Preview de Datos",
-        "active_section": "api-management"
-    })
-
-@app.post("/api-management/validate-mapping")
-async def validate_mapping_ajax(request: Request):
-    """Validar configuración de mapping antes de guardar"""
-    user = require_admin(request)
-    
-    try:
-        form_data = await request.json()
-        
-        from .services.field_mapper_service import FieldMapperService
-        mapper_service = FieldMapperService()
-        
-        is_valid, errors = mapper_service.validate_mapping_configuration(form_data)
-        
-        return {
-            "success": is_valid,
-            "errors": errors,
-            "message": "Configuración válida" if is_valid else "Errores encontrados"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error validando mapping: {e}")
-        return {
-            "success": False,
-            "errors": [str(e)],
-            "message": "Error en validación"
-        }
-
-@app.get("/api-management/field-templates")
-async def get_field_templates(request: Request):
-    """Obtener templates predefinidos de mapping"""
-    user = require_admin(request)
-    
-    templates = {
-        "crm_client": {
-            "name": "Cliente CRM",
-            "description": "Template para datos de clientes",
-            "fields": [
-                {"api_path": "id", "display_name": "ID", "field_type": "number"},
-                {"api_path": "name", "display_name": "Nombre", "field_type": "text"},
-                {"api_path": "email", "display_name": "Correo", "field_type": "email"},
-                {"api_path": "phone", "display_name": "Teléfono", "field_type": "phone"},
-                {"api_path": "company", "display_name": "Empresa", "field_type": "text"},
-                {"api_path": "created_at", "display_name": "Fecha Registro", "field_type": "date"}
-            ]
-        },
-        "ecommerce_order": {
-            "name": "Pedido E-commerce",
-            "description": "Template para pedidos de e-commerce",
-            "fields": [
-                {"api_path": "order_id", "display_name": "ID Pedido", "field_type": "number"},
-                {"api_path": "customer.name", "display_name": "Cliente", "field_type": "text"},
-                {"api_path": "total", "display_name": "Total", "field_type": "number"},
-                {"api_path": "status", "display_name": "Estado", "field_type": "text"},
-                {"api_path": "date", "display_name": "Fecha", "field_type": "date"}
-            ]
-        },
-        "user_profile": {
-            "name": "Perfil Usuario",
-            "description": "Template para perfiles de usuario",
-            "fields": [
-                {"api_path": "user_id", "display_name": "ID Usuario", "field_type": "number"},
-                {"api_path": "profile.first_name", "display_name": "Nombre", "field_type": "text"},
-                {"api_path": "profile.last_name", "display_name": "Apellido", "field_type": "text"},
-                {"api_path": "email", "display_name": "Email", "field_type": "email"},
-                {"api_path": "is_active", "display_name": "Activo", "field_type": "boolean"}
-            ]
-        }
-    }
-    
-    return {
-        "success": True,
-        "templates": templates
-    }
-
-logger.info("🚀 Nuevos endpoints de mapping manual agregados")
-logger.info("  📊 GET /api-management/preview/{mapping_id} - Preview de datos")
-logger.info("  ✅ POST /api-management/validate-mapping - Validar mapping")
-logger.info("  📋 GET /api-management/field-templates - Templates predefinidos")

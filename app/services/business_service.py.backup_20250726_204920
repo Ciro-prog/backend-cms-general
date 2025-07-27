@@ -149,12 +149,3 @@ class BusinessService:
             return True
         
         return False
-    # === MÉTODOS DE COMPATIBILIDAD ===
-    
-    async def get_all_businesses(self) -> List[BusinessInstance]:
-        """Método de compatibilidad - usar get_all_business_instances()"""
-        return await self.get_all_business_instances()
-    
-    async def get_businesses(self, **kwargs) -> List[BusinessInstance]:
-        """Método de compatibilidad - usar get_all_business_instances()"""
-        return await self.get_all_business_instances(**kwargs)
